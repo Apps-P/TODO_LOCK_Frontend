@@ -17,7 +17,7 @@ class Job extends HiveObject {
   late String content;
 
   @HiveField(3)
-  late String lock;
+  late bool lock;
 
   @HiveField(4)
   late DateTime? checkTime;

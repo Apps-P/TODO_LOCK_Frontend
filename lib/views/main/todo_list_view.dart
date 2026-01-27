@@ -123,19 +123,10 @@ class _TodoListViewState extends State<TodoListView> {
   Widget build(BuildContext context) {
     ThemeData theme = Theme.of(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('오늘은'),
-        leading: IconButton(icon: const Icon(Icons.menu), onPressed: () {}),
-        actions: [
-          IconButton(icon: const Icon(Icons.calendar_today), onPressed: () {})
-        ],
-        elevation: 0,
-        backgroundColor: theme.scaffoldBackgroundColor,
-        foregroundColor: theme.textTheme.titleLarge?.color,
-      ),
-
-      body: ValueListenableBuilder<Box<Job>>(
+    // Scaffold 대신 Material을 최상위로 설정
+    return Material(
+      color: Colors.transparent, // 부모의 배경색을 따르도록 투명 설정
+      child: ValueListenableBuilder<Box<Job>>(
         valueListenable: _box.listenable(),
         builder: (context, box, _) {
           final jobs = box.values.toList();
@@ -156,7 +147,6 @@ class _TodoListViewState extends State<TodoListView> {
               final isChecked = _getCheckboxState(job);
               final timeText = _formatTimeText(job);
 
-              // 왼쪽으로 슬라이딩 시 해당 TODO 삭제
               return Dismissible(
                 key: Key(job.id),
                 direction: DismissDirection.endToStart,
@@ -178,11 +168,9 @@ class _TodoListViewState extends State<TodoListView> {
                   color: color,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
-                    // 회색 테두리
                     side: BorderSide(color: Colors.grey[300]!, width: 1),
                   ),
                   child: InkWell(
-                    //"Job클릭하면 CU 페이지로 네비게이션"
                     onTap: () =>
                         Navigator.pushNamed(context, '/edit', arguments: key),
                     borderRadius: BorderRadius.circular(12),
@@ -191,15 +179,12 @@ class _TodoListViewState extends State<TodoListView> {
                           horizontal: 8.0, vertical: 12.0),
                       child: Row(
                         children: [
-                          // 체크박스
                           Checkbox(
                             value: isChecked,
                             onChanged: (newValue) {
                               _onCheckboxTapped(key, job, newValue);
                             },
                           ),
-
-                          // 시간
                           Text(
                             timeText,
                             style: theme.textTheme.bodyMedium?.copyWith(
@@ -210,29 +195,14 @@ class _TodoListViewState extends State<TodoListView> {
                             ),
                           ),
                           const SizedBox(width: 12),
-
-                          // 내용
                           Expanded(
                             child: Text(
                               job.content,
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                              ),
+                              style: theme.textTheme.bodyLarge,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-
-                          // 수정 아이콘
-                          /*
-                          IconButton(
-                            icon: Icon(Icons.edit_outlined,
-                                color: Colors.grey[600]),
-                            onPressed: () => Navigator.pushNamed(
-                                context, '/edit',
-                                arguments: key),
-                          ),
-                          */
-
                           if (!job.done)
                             IconButton(
                               icon: Icon(
@@ -257,12 +227,6 @@ class _TodoListViewState extends State<TodoListView> {
           );
         },
       ),
-
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.pushNamed(context, '/edit'),
-        child: const Icon(Icons.add),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 }

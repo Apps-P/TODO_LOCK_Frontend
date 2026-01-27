@@ -25,9 +25,9 @@ void main() async {
 
   final box = Hive.box<Job>('userBox');
   if (box.isEmpty) {
-    await box.add(Job(content: '할일 1', lock: '잠금1', duration: const Duration(minutes: 10)));
-    await box.add(Job(content: '할일 2', lock: '잠금2', duration: const Duration(minutes: 5)));
-    await box.add(Job(content: '할일 3', lock: '잠금3', duration: const Duration(minutes: 1)));
+    await box.add(Job(content: '할일 1', lock: true, duration: const Duration(minutes: 10)));
+    await box.add(Job(content: '할일 2', lock: true, duration: const Duration(minutes: 5)));
+    await box.add(Job(content: '할일 3', lock: true, duration: const Duration(minutes: 1)));
   }
 
   runApp(const MyApp());
