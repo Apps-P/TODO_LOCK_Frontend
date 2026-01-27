@@ -6,7 +6,7 @@ class AppTheme {
   static ThemeData lightTheme = ThemeData(
     brightness: Brightness.light,
     scaffoldBackgroundColor: AppColors.softwhite,
-    fontFamily: 'Pretendard',
+    fontFamily: 'Paperlogy',
     colorScheme: ColorScheme(
       brightness: Brightness.light,
       primary: AppColors.carrot,

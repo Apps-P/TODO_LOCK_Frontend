@@ -18,7 +18,7 @@ class JobAdapter extends TypeAdapter<Job> {
     };
     return Job(
       content: fields[2] as String,
-      lock: fields[3] as String,
+      lock: fields[3] as bool,
       duration: fields[5] as Duration,
       done: fields[6] as bool,
     )
