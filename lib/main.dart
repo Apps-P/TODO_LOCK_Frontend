@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:todo_and_lock/models/job_model.dart';
+import 'package:todo_and_lock/models/todo_model.dart';
 import 'package:todo_and_lock/models/duration_adapter.dart';
 import 'package:todo_and_lock/theme/app_theme.dart';
 import 'package:todo_and_lock/views/edit/todo_edit_view.dart';
@@ -13,22 +13,10 @@ void main() async {
   await Hive.initFlutter();
 
   // 모델 어댑터 등록
-  Hive.registerAdapter(JobAdapter());
+  Hive.registerAdapter(TodoAdapter());
 
   // Duration 어댑터 등록
   Hive.registerAdapter(DurationAdapter());
-
-  // Box 열기
-  await Hive.openBox<Job>('userBox');
-
-  // 샘플 데이터 추가 (테스트용)
-
-  final box = Hive.box<Job>('userBox');
-  if (box.isEmpty) {
-    await box.add(Job(content: '할일 1', lock: true, duration: const Duration(minutes: 10)));
-    await box.add(Job(content: '할일 2', lock: true, duration: const Duration(minutes: 5)));
-    await box.add(Job(content: '할일 3', lock: true, duration: const Duration(minutes: 1)));
-  }
 
   runApp(const MyApp());
 }
