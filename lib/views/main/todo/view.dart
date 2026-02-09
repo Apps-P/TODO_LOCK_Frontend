@@ -4,6 +4,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:todo_and_lock/models/todo_model.dart';
 import 'func.dart'; // 앞서 정의한 updateTodoStatus, getTodoColor 등
 import '../../edit/edit_create_view.dart';
+import 'package:todo_and_lock/views/lock/lock_overlay_view.dart';
+import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 
 class TodoListView extends StatefulWidget {
   final DateTime selectedDate;
@@ -107,6 +109,8 @@ class _TodoListViewState extends State<TodoListView> {
           ),
         ],
       ),
+
+      /// check box: check lock
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: Transform.scale(
@@ -115,10 +119,36 @@ class _TodoListViewState extends State<TodoListView> {
             value: getCheckboxState(todo),
             activeColor: Colors.orange,
             shape: const CircleBorder(), // 원형 체크박스 추천
-            onChanged: (_) {
+
+            /// 오버레이 생성
+            onChanged: (_) async{
               onCheckedTap(todo);
               setState(() {});
+              if(todo.lock == false) return;
+              final status = await FlutterOverlayWindow.isPermissionGranted();
+              if(status == false) {
+                await FlutterOverlayWindow.requestPermission();
+                return;
+              }
+              if (await FlutterOverlayWindow.isActive()) return;
+              await FlutterOverlayWindow.showOverlay(
+                enableDrag: false,
+                overlayTitle: "overlay test",
+                overlayContent: 'Overlay Enabled',
+                flag: OverlayFlag.defaultFlag,
+                visibility: NotificationVisibility.visibilityPublic,
+                positionGravity: PositionGravity.auto,
+                height: WindowSize.matchParent,
+                width: WindowSize.matchParent,
+                startPosition: const OverlayPosition(0, 0),
+              );
+              await FlutterOverlayWindow.shareData({
+                'contents': todo.content,
+                'duration': todo.duration,
+                'timer': formatTimeText(todo),   // 타이머 값
+              });
             },
+
           ),
         ),
         title: Text(

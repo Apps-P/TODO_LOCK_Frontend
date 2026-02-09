@@ -6,7 +6,15 @@ import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 enum OverlayMode { lock, temp }
 
 class LockOverlayView extends StatefulWidget {
-  const LockOverlayView({super.key});
+  final String contents;
+  final String duration;
+  final String timer;
+  const LockOverlayView({
+    super.key,
+    required this.contents,
+    required this.duration,
+    required this.timer,
+  });
 
   @override
   State<LockOverlayView> createState() => _LockOverlayViewState();
@@ -55,7 +63,7 @@ class _LockOverlayViewState extends State<LockOverlayView> {
       });
     }
 
-    // 3) 10초 후 lock UI로 복귀
+    // 3) 5초 후 lock UI로 복귀
     Future.delayed(const Duration(seconds: 5), () async {
       if (!mounted) return;
       log("5 second");
@@ -116,8 +124,10 @@ class _LockOverlayViewState extends State<LockOverlayView> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       alignment: Alignment.center,
+
+                      // Use formatTimeText function !!
                       child: Text(
-                        "00 : 00",
+                        widget.timer,
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 50,
@@ -141,8 +151,10 @@ class _LockOverlayViewState extends State<LockOverlayView> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       alignment: Alignment.center,
+
+                      // Show contents & duration.
                       child: Text(
-                        "+3:00 할 일",
+                          "+${widget.duration} ${widget.contents}",
                         style: TextStyle(fontSize: 20, color: Colors.black87),
                       ),
                     ),
@@ -219,6 +231,7 @@ class _LockOverlayViewState extends State<LockOverlayView> {
 
                           SizedBox(width: 16),
 
+                          /// "Give UP" button -> give me the money!
                           Expanded(
                             child: GestureDetector(
                               onTap: () async {

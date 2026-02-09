@@ -17,6 +17,7 @@ class _TodoEditCreatePageState extends State<TodoEditCreatePage> {
   late DateTime _selectedDate;
   late int _selectedMinutes;
   late Box<Todo> _todoBox;
+  late bool _isLocked; // 1. Lock 상태 변수 추가
 
   @override
   void initState() {
@@ -25,6 +26,7 @@ class _TodoEditCreatePageState extends State<TodoEditCreatePage> {
     _selectedDate = widget.todo?.date ?? widget.initialDate;
     _contentController.text = widget.todo?.content ?? "";
     _selectedMinutes = widget.todo?.duration.inMinutes ?? 10; // 기본 10분
+    _isLocked = widget.todo?.lock ?? false;
   }
 
   /// 날짜가 변경되었을 때 이전 날짜의 no를 재정렬하는 함수
@@ -56,31 +58,31 @@ class _TodoEditCreatePageState extends State<TodoEditCreatePage> {
     if (_contentController.text.isEmpty) return;
 
     if (widget.todo == null) {
-      // [CREATE] 로직
+      // [CREATE]
       final newTodo = Todo(
         content: _contentController.text,
-        lock: false,
+        lock: _isLocked, // 3. 설정된 Lock 값 반영
         duration: Duration(minutes: _selectedMinutes),
       )
         ..date = _selectedDate
-        ..user_id = "user_1" // 임시 ID
+        ..user_id = "user_1"
         ..no = _getNextNo(_selectedDate);
 
       await _todoBox.add(newTodo);
     } else {
-      // [EDIT] 로직
+      // [EDIT]
       final todo = widget.todo!;
       final oldDate = todo.date;
 
       todo.content = _contentController.text;
       todo.duration = Duration(minutes: _selectedMinutes);
+      todo.lock = _isLocked; // 4. 수정된 Lock 값 반영
 
-      // 날짜가 바뀌었을 경우
       if (!isSameDay(oldDate, _selectedDate)) {
         todo.date = _selectedDate;
-        todo.no = _getNextNo(_selectedDate); // 새 날짜의 마지막으로
+        todo.no = _getNextNo(_selectedDate);
         await todo.save();
-        _reorderOldDate(oldDate); // 이전 날짜 no 재정렬
+        _reorderOldDate(oldDate);
       } else {
         await todo.save();
       }
@@ -130,8 +132,24 @@ class _TodoEditCreatePageState extends State<TodoEditCreatePage> {
                   ),
                 ),
                 Text("$_selectedMinutes분"),
+
+
               ],
             ),
+            // 5. Lock 상태 체크박스 추가
+
+            CheckboxListTile(
+              title: const Text("항목 잠금 (Lock)"),
+              subtitle: const Text("잠구기"),
+              value: _isLocked,
+              controlAffinity: ListTileControlAffinity.leading, // 체크박스를 왼쪽으로
+              onChanged: (bool? value) {
+                setState(() {
+                  _isLocked = value ?? false;
+                });
+              },
+            ),
+
             const Spacer(),
             ElevatedButton(
               onPressed: _onSave,

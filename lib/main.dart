@@ -7,6 +7,7 @@ import 'package:todo_and_lock/theme/app_theme.dart';
 import 'package:todo_and_lock/views/lock/lock_overlay_view.dart';
 import 'package:todo_and_lock/views/edit/edit_create_view.dart';
 import 'package:todo_and_lock/views/main/main_view.dart';
+import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 
 
 void main() async {
@@ -26,15 +27,57 @@ void main() async {
 }
 
 
+// ------------------------------------------------------------------
+// overlay entry (main.dart 하단 혹은 별도 파일)
+// ------------------------------------------------------------------
 @pragma("vm:entry-point")
 void overlayMain() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
     const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: LockOverlayView(),
+      home: OverlayDataHandler(), // 바로 View를 띄우지 않고 Handler를 거침
     ),
   );
+}
+
+class OverlayDataHandler extends StatefulWidget {
+  const OverlayDataHandler({super.key});
+
+  @override
+  State<OverlayDataHandler> createState() => _OverlayDataHandlerState();
+}
+
+// 혹시모르는 상황에 대비한 init data.
+class _OverlayDataHandlerState extends State<OverlayDataHandler> {
+  String contents = "할 일 없음";
+  String duration = "0:00";
+  String timer = "00:00";
+
+  @override
+  void initState() {
+    super.initState();
+    // 여기서 메인 앱이 보낸 데이터를 대기함
+    FlutterOverlayWindow.overlayListener.listen((data) {
+      if (data != null && data is Map) {
+        setState(() {
+          contents = data['contents'] ?? contents;
+          duration = data['duration'] ?? duration;
+          timer = data['timer'] ?? timer;
+        });
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // 수신된 데이터를 바탕으로 실제 UI 위젯 호출
+    return LockOverlayView(
+      contents: contents,
+      duration: duration,
+      timer: timer,
+    );
+  }
 }
 
 class MyApp extends StatelessWidget {
