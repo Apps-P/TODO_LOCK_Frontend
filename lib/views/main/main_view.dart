@@ -5,26 +5,45 @@ import 'app_bar.dart';
 import 'package:todo_and_lock/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
-import 'todo_list_view.dart';
+import 'package:todo_and_lock/views/main/todo/view.dart';
+import 'package:intl/intl.dart';
 
 
 
 
 class MainView extends StatelessWidget {
-  const MainView({super.key});
+
+  final DateTime selectedDate; // 라우트에서 넘겨받은 날짜
+  const MainView({super.key, required this.selectedDate});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const CustomAppBar(title: '오늘 할 일',),
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    final compareDate = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
 
-      body: TodoListView(),
+    String titleWidget;
+
+    if (compareDate == today) {
+      titleWidget = "오늘은...";
+    } else if (compareDate == tomorrow) {
+      titleWidget = "내일은...";
+    } else {
+      titleWidget = DateFormat('yyyy.MM.dd').format(selectedDate);
+    }
+    return Scaffold(
+      appBar: CustomAppBar(
+        title:titleWidget,
+      ),
+
+      body: TodoListView(selectedDate: selectedDate),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           // 새 할 일 추가 페이지로 이동
-          Navigator.pushNamed(context, '/edit');
+          Navigator.pushNamed(context, '/create');
         },
-        backgroundColor: AppColors.carrot, // 원하는 색상으로 변경 가능
+        backgroundColor: AppColors.carrot,
         child: const Icon(Icons.add_outlined),
       ),
 
