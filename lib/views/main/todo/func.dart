@@ -38,10 +38,6 @@ void onCheckedTap(Todo todo) {
     // 시작 전 -> 진행 중으로 변경
     todo.checkTime = now;
     todo.done = false;
-  } else {
-    // 진행 중/완료 상태에서 탭 -> 시작 전(초기 상태)으로 리셋
-    todo.checkTime = null;
-    todo.done = false;
   }
 
   todo.save();

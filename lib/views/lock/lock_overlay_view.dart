@@ -1,4 +1,5 @@
 import 'dart:developer';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
@@ -7,13 +8,11 @@ enum OverlayMode { lock, temp }
 
 class LockOverlayView extends StatefulWidget {
   final String contents;
-  final String duration;
-  final String timer;
+  final Duration duration;
   const LockOverlayView({
     super.key,
     required this.contents,
     required this.duration,
-    required this.timer,
   });
 
   @override
@@ -24,6 +23,10 @@ class LockOverlayView extends StatefulWidget {
 class _LockOverlayViewState extends State<LockOverlayView> {
   OverlayMode _mode = OverlayMode.lock;
 
+  // 실시간 타이머를 위한 변수들
+  Timer? _tickTimer;
+  late Duration _remainingTime;
+
   @override
 
   void initState() {
@@ -31,6 +34,21 @@ class _LockOverlayViewState extends State<LockOverlayView> {
   }
 
   @override
+  void dispose() {
+    _tickTimer?.cancel(); // 메모리 누수 방지
+    super.dispose();
+  }
+
+
+  String _formatDuration(Duration duration) {
+    String minutes = duration.inMinutes.toString().padLeft(2, '0');
+    String seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+    return "$minutes:$seconds";
+  }
+  void _onTimerFinished() async {
+    // 시간이 다 되면 자동으로 오버레이 닫기
+    await FlutterOverlayWindow.closeOverlay();
+  }
 
   Widget build(BuildContext context) {
     var par_h = MediaQuery.of(context).size.height;
@@ -125,9 +143,9 @@ class _LockOverlayViewState extends State<LockOverlayView> {
                       ),
                       alignment: Alignment.center,
 
-                      // Use formatTimeText function !!
+                      /// Timer 표시
                       child: Text(
-                        widget.timer,
+                        _formatDuration(widget.duration),
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 50,
@@ -154,7 +172,7 @@ class _LockOverlayViewState extends State<LockOverlayView> {
 
                       // Show contents & duration.
                       child: Text(
-                          "+${widget.duration} ${widget.contents}",
+                          "+3:00 ${widget.contents}",
                         style: TextStyle(fontSize: 20, color: Colors.black87),
                       ),
                     ),

@@ -19,16 +19,52 @@ class TodoListView extends StatefulWidget {
 class _TodoListViewState extends State<TodoListView> {
   late Box<Todo> _todoBox;
   Timer? _timer;
+  String? _activeOverlayId;
 
   @override
   void initState() {
     super.initState();
     _todoBox = Hive.box<Todo>('todos');
-
     // 1초마다 업데이트 로직 실행
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (updateTodoStatus(_todoBox)) {
-        if (mounted) setState(() {});
+    // TodoListView의 initState 부분
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+      // 1. 상태 업데이트 (Hive DB 등)
+      bool hasChanged = updateTodoStatus(_todoBox);
+      if (hasChanged && mounted) setState(() {});
+
+      // 2. 오버레이 실시간 데이터 전송
+      if (_activeOverlayId != null && await FlutterOverlayWindow.isActive()) {
+        try {
+          final currentTodo = _todoBox.values.firstWhere((t) => t.id == _activeOverlayId);
+
+          // --- 실시간 남은 시간 계산 로직 ---
+          final now = DateTime.now();
+          int remainingSeconds;
+
+          if (currentTodo.checkTime != null && !currentTodo.done) {
+            // (설정시간 - 경과시간) 계산
+            final remaining = currentTodo.duration - now.difference(currentTodo.checkTime!);
+            remainingSeconds = remaining.isNegative ? 0 : remaining.inSeconds;
+          } else {
+            // 시작되지 않았거나 완료된 경우 기본 duration 사용
+            remainingSeconds = currentTodo.duration.inSeconds;
+          }
+          // -------------------------------
+
+          await FlutterOverlayWindow.shareData({
+            'contents': currentTodo.content,
+            'duration': remainingSeconds, // 계산된 '실시간 남은 초' 전송
+          });
+
+          // 시간이 0이 되면 오버레이 자동 종료
+          if (remainingSeconds <= 0 && currentTodo.checkTime != null) {
+            await FlutterOverlayWindow.closeOverlay();
+            _activeOverlayId = null;
+          }
+
+        } catch (e) {
+          _activeOverlayId = null;
+        }
       }
     });
   }
@@ -124,7 +160,8 @@ class _TodoListViewState extends State<TodoListView> {
             onChanged: (_) async{
               onCheckedTap(todo);
               setState(() {});
-              if(todo.lock == false) return;
+              if(todo.lock == false || todo.done == true) return;
+
               final status = await FlutterOverlayWindow.isPermissionGranted();
               if(status == false) {
                 await FlutterOverlayWindow.requestPermission();
@@ -142,11 +179,13 @@ class _TodoListViewState extends State<TodoListView> {
                 width: WindowSize.matchParent,
                 startPosition: const OverlayPosition(0, 0),
               );
+              // 현재 id 저장
+              _activeOverlayId = todo.id;
               await FlutterOverlayWindow.shareData({
                 'contents': todo.content,
-                'duration': todo.duration,
-                'timer': formatTimeText(todo),   // 타이머 값
+                'duration': todo.duration.inSeconds,
               });
+
             },
 
           ),

@@ -51,19 +51,19 @@ class OverlayDataHandler extends StatefulWidget {
 // 혹시모르는 상황에 대비한 init data.
 class _OverlayDataHandlerState extends State<OverlayDataHandler> {
   String contents = "할 일 없음";
-  String duration = "0:00";
-  String timer = "00:00";
+  Duration duration = Duration.zero;
 
   @override
   void initState() {
     super.initState();
-    // 여기서 메인 앱이 보낸 데이터를 대기함
+    // OverlayDataHandler 내부 listen 로직
     FlutterOverlayWindow.overlayListener.listen((data) {
       if (data != null && data is Map) {
         setState(() {
           contents = data['contents'] ?? contents;
-          duration = data['duration'] ?? duration;
-          timer = data['timer'] ?? timer;
+          int seconds = data['duration'] ?? 0;
+          // 외부에서 주입된 데이터로 업데이트 (내부 타이머 불필요)
+          duration = Duration(seconds: seconds);
         });
       }
     });
@@ -75,7 +75,6 @@ class _OverlayDataHandlerState extends State<OverlayDataHandler> {
     return LockOverlayView(
       contents: contents,
       duration: duration,
-      timer: timer,
     );
   }
 }
