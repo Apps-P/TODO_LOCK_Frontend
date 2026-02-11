@@ -48,22 +48,28 @@ class OverlayDataHandler extends StatefulWidget {
   State<OverlayDataHandler> createState() => _OverlayDataHandlerState();
 }
 
-// 혹시모르는 상황에 대비한 init data.
 class _OverlayDataHandlerState extends State<OverlayDataHandler> {
+  String id = "";
   String contents = "할 일 없음";
   Duration duration = Duration.zero;
+  DateTime? checkTime;
 
   @override
   void initState() {
     super.initState();
-    // OverlayDataHandler 내부 listen 로직
     FlutterOverlayWindow.overlayListener.listen((data) {
       if (data != null && data is Map) {
         setState(() {
+          id = data['id'] ?? "";
           contents = data['contents'] ?? contents;
-          int seconds = data['duration'] ?? 0;
-          // 외부에서 주입된 데이터로 업데이트 (내부 타이머 불필요)
-          duration = Duration(seconds: seconds);
+          duration = Duration(seconds: data['duration'] ?? 0);
+
+          // ISO8601 문자열을 DateTime 객체로 변환
+          if (data['checkTime'] != null && data['checkTime'] != '') {
+            checkTime = DateTime.parse(data['checkTime']);
+          } else {
+            checkTime = null;
+          }
         });
       }
     });
@@ -71,13 +77,17 @@ class _OverlayDataHandlerState extends State<OverlayDataHandler> {
 
   @override
   Widget build(BuildContext context) {
-    // 수신된 데이터를 바탕으로 실제 UI 위젯 호출
+    // checkTime과 duration을 LockOverlayView에 전달
     return LockOverlayView(
+      id: id,
       contents: contents,
+      checkTime: checkTime,
       duration: duration,
     );
   }
 }
+
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});

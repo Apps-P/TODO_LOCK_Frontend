@@ -7,12 +7,17 @@ import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 enum OverlayMode { lock, temp }
 
 class LockOverlayView extends StatefulWidget {
+  final String id;
   final String contents;
+  final DateTime? checkTime;
   final Duration duration;
+
   const LockOverlayView({
     super.key,
+    required this.id,
     required this.contents,
     required this.duration,
+    required this.checkTime,
   });
 
   @override
@@ -22,15 +27,56 @@ class LockOverlayView extends StatefulWidget {
 
 class _LockOverlayViewState extends State<LockOverlayView> {
   OverlayMode _mode = OverlayMode.lock;
-
-  // 실시간 타이머를 위한 변수들
   Timer? _tickTimer;
   late Duration _remainingTime;
 
   @override
-
   void initState() {
     super.initState();
+    _calculateRemaining();
+    _startCountdown();
+  }
+
+
+  ///====================================================
+  /// 타이머 함수 선언
+  /// ====================================================
+
+  // 1초마다 남은 시간 갱신 (앱이 백그라운드여도 오버레이 isolate는 작동함)
+  void _calculateRemaining() {
+    if (widget.checkTime != null) {
+      final now = DateTime.now();
+      final remaining = widget.duration - now.difference(widget.checkTime!);
+      _remainingTime = remaining.isNegative ? Duration.zero : remaining;
+    } else {
+      _remainingTime = widget.duration;
+    }
+  }
+
+  void _startCountdown() {
+    _tickTimer = Timer.periodic(const Duration(seconds: 1), (timer) async{
+      if (_remainingTime.inSeconds > 0) {
+        setState(() => _calculateRemaining());
+      } else {
+        _onFinished();
+      }
+    });
+  }
+
+  // 시간이 다 되거나 사용자가 끌 때 데이터 반환
+  Future<void> _closeOverlayWithSync() async {
+    await FlutterOverlayWindow.closeOverlay();
+  }
+
+  void _onFinished() async {
+    _tickTimer?.cancel();
+    await _closeOverlayWithSync();
+  }
+
+  String _formatDuration(Duration duration) {
+    String minutes = duration.inMinutes.toString().padLeft(2, '0');
+    String seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+    return "$minutes:$seconds";
   }
 
   @override
@@ -39,16 +85,11 @@ class _LockOverlayViewState extends State<LockOverlayView> {
     super.dispose();
   }
 
+  ///====================================================
+  /// 타이머 함수 끝
+  /// ====================================================
 
-  String _formatDuration(Duration duration) {
-    String minutes = duration.inMinutes.toString().padLeft(2, '0');
-    String seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
-    return "$minutes:$seconds";
-  }
-  void _onTimerFinished() async {
-    // 시간이 다 되면 자동으로 오버레이 닫기
-    await FlutterOverlayWindow.closeOverlay();
-  }
+
 
   Widget build(BuildContext context) {
     var par_h = MediaQuery.of(context).size.height;
@@ -145,7 +186,7 @@ class _LockOverlayViewState extends State<LockOverlayView> {
 
                       /// Timer 표시
                       child: Text(
-                        _formatDuration(widget.duration),
+                        _formatDuration(_remainingTime),
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 50,
@@ -177,6 +218,7 @@ class _LockOverlayViewState extends State<LockOverlayView> {
                       ),
                     ),
 
+                    /// lock 2
                     Container(
                       width: double.infinity,
                       height: par_h * 0.22,
@@ -225,7 +267,7 @@ class _LockOverlayViewState extends State<LockOverlayView> {
                       height: par_h * 0.08,
                       child: Row(
                         children: [
-                          // ✔️ 잠시 해제 버튼 수정됨
+                          /// temp 버튼
                           Expanded(
                             child: GestureDetector(
                               onTap: _handleTempMode,
@@ -253,7 +295,7 @@ class _LockOverlayViewState extends State<LockOverlayView> {
                           Expanded(
                             child: GestureDetector(
                               onTap: () async {
-                                await FlutterOverlayWindow.closeOverlay();
+                                await _closeOverlayWithSync();
                               },
                               child: Container(
                                 padding: EdgeInsets.symmetric(vertical: 14),
