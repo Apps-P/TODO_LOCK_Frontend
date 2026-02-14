@@ -6,6 +6,9 @@ import 'func.dart'; // 앞서 정의한 updateTodoStatus, getTodoColor 등
 import '../../edit/edit_create_view.dart';
 import 'package:todo_and_lock/views/lock/lock_overlay_view.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
+import 'dart:developer';
+
+
 
 class TodoListView extends StatefulWidget {
   final DateTime selectedDate;
@@ -150,14 +153,15 @@ class _TodoListViewState extends State<TodoListView> {
                 startPosition: const OverlayPosition(0, 0),
               );
 
-              /// 정보 전달 1회만
+
               await FlutterOverlayWindow.shareData({
                 'id': todo.id,
                 'contents': todo.content,
                 'duration': todo.duration.inSeconds,
                 'checkTime': todo.checkTime?.toIso8601String() ?? '',
-                // DateTime을 ISO8601 문자열로 변환
               });
+
+              log("Data sent successfully");
 
             },
 

@@ -8,6 +8,7 @@ import 'package:todo_and_lock/views/lock/lock_overlay_view.dart';
 import 'package:todo_and_lock/views/edit/edit_create_view.dart';
 import 'package:todo_and_lock/views/main/main_view.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
+import 'dart:developer';
 
 
 void main() async {
@@ -54,30 +55,56 @@ class _OverlayDataHandlerState extends State<OverlayDataHandler> {
   Duration duration = Duration.zero;
   DateTime? checkTime;
 
+  // OverlayDataHandler의 initState
   @override
   void initState() {
     super.initState();
+
+
     FlutterOverlayWindow.overlayListener.listen((data) {
+
+
       if (data != null && data is Map) {
+        log("Data is Map, extracting values...");
         setState(() {
           id = data['id'] ?? "";
+          log("Extracted id: $id");
+
           contents = data['contents'] ?? contents;
+          log("Extracted contents: $contents");
+
           duration = Duration(seconds: data['duration'] ?? 0);
+          log("Extracted duration: $duration");
 
           // ISO8601 문자열을 DateTime 객체로 변환
           if (data['checkTime'] != null && data['checkTime'] != '') {
             checkTime = DateTime.parse(data['checkTime']);
+            log("Extracted checkTime: $checkTime");
           } else {
             checkTime = null;
+            log("checkTime is null or empty");
           }
         });
+      } else {
+        log("Data is null or not a Map");
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // checkTime과 duration을 LockOverlayView에 전달
+    log("=== OverlayDataHandler build ===");
+    log("Building with - id: $id, contents: $contents, duration: $duration, checkTime: $checkTime");
+
+    // 데이터가 아직 안 왔으면 로딩 화면 표시
+    if (id.isEmpty) {
+      return Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return LockOverlayView(
       id: id,
       contents: contents,
