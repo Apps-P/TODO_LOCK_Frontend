@@ -4,6 +4,11 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:todo_and_lock/models/todo_model.dart';
 import 'func.dart'; // 앞서 정의한 updateTodoStatus, getTodoColor 등
 import '../../edit/edit_create_view.dart';
+import 'package:todo_and_lock/views/lock/lock_overlay_view.dart';
+import 'package:flutter_overlay_window/flutter_overlay_window.dart';
+import 'dart:developer';
+
+
 
 class TodoListView extends StatefulWidget {
   final DateTime selectedDate;
@@ -17,17 +22,20 @@ class TodoListView extends StatefulWidget {
 class _TodoListViewState extends State<TodoListView> {
   late Box<Todo> _todoBox;
   Timer? _timer;
+  String? _activeOverlayId;
 
   @override
   void initState() {
     super.initState();
     _todoBox = Hive.box<Todo>('todos');
 
+
     // 1초마다 업데이트 로직 실행
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (updateTodoStatus(_todoBox)) {
-        if (mounted) setState(() {});
-      }
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+      // 1. 상태 업데이트 (Hive DB 등)
+      bool hasChanged = updateTodoStatus(_todoBox);
+      if (hasChanged && mounted) setState(() {});
+
     });
   }
 
@@ -107,6 +115,8 @@ class _TodoListViewState extends State<TodoListView> {
           ),
         ],
       ),
+
+      /// check box: check lock
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: Transform.scale(
@@ -115,10 +125,46 @@ class _TodoListViewState extends State<TodoListView> {
             value: getCheckboxState(todo),
             activeColor: Colors.orange,
             shape: const CircleBorder(), // 원형 체크박스 추천
-            onChanged: (_) {
+
+            /// 오버레이 생성
+            onChanged: (_) async{
               onCheckedTap(todo);
               setState(() {});
+              if(todo.lock == false || todo.done == true) return;
+
+              // 권한 확인
+              final status = await FlutterOverlayWindow.isPermissionGranted();
+              if(status == false) {
+                await FlutterOverlayWindow.requestPermission();
+                return;
+              }
+
+              if (await FlutterOverlayWindow.isActive()) return;
+
+              await FlutterOverlayWindow.showOverlay(
+                enableDrag: false,
+                overlayTitle: "overlay test",
+                overlayContent: 'Overlay Enabled',
+                flag: OverlayFlag.defaultFlag,
+                visibility: NotificationVisibility.visibilityPublic,
+                positionGravity: PositionGravity.auto,
+                height: WindowSize.matchParent,
+                width: WindowSize.matchParent,
+                startPosition: const OverlayPosition(0, 0),
+              );
+
+
+              await FlutterOverlayWindow.shareData({
+                'id': todo.id,
+                'contents': todo.content,
+                'duration': todo.duration.inSeconds,
+                'checkTime': todo.checkTime?.toIso8601String() ?? '',
+              });
+
+              log("Data sent successfully");
+
             },
+
           ),
         ),
         title: Text(
