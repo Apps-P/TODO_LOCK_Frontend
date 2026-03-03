@@ -32,8 +32,17 @@ void main() async {
 // overlay entry (main.dart 하단 혹은 별도 파일)
 // ------------------------------------------------------------------
 @pragma("vm:entry-point")
-void overlayMain() {
+void overlayMain() async{
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Hive 초기화 및 어댑터 등록
+  await Hive.initFlutter();
+
+  // TodoAdapter 등록
+  if (!Hive.isAdapterRegistered(0)) {  // typeId 확인
+    Hive.registerAdapter(TodoAdapter());
+    Hive.registerAdapter(DurationAdapter());
+  }
   runApp(
     const MaterialApp(
       debugShowCheckedModeBanner: false,

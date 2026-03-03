@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:todo_and_lock/models/todo_model.dart';
@@ -87,6 +88,19 @@ class _TodoEditCreatePageState extends State<TodoEditCreatePage> {
         await todo.save();
       }
     }
+
+
+    log("========= Hive Todo List Check =========");
+    log("Total count: ${_todoBox.length}");
+
+    for (int i = 0; i < _todoBox.length; i++) {
+      final todo = _todoBox.getAt(i);
+      if (todo != null) {
+        // todo.id가 UUID 등으로 정의되어 있다면 출력됩니다.
+        log("Index[$i] | Hive Key: ${_todoBox.keyAt(i)} | Todo ID: ${todo.id} | Content: ${todo.content}");
+      }
+    }
+    log("========================================");
     Navigator.pop(context);
   }
 
