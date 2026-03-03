@@ -1,10 +1,7 @@
-import 'dart:developer';
-import 'dart:isolate';
-import 'dart:ui';
+
 import 'app_bar.dart';
 import 'package:todo_and_lock/theme/app_colors.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:todo_and_lock/views/main/todo/view.dart';
 import 'package:intl/intl.dart';
 

@@ -1,11 +1,21 @@
 import 'dart:developer';
 import 'dart:async';
 
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:todo_and_lock/models/todo_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
+import 'lock_ui.dart';
+import 'temp_ui.dart';
 
 enum OverlayMode { lock, temp }
 
+/// ====================================================
+/// What: class for Lock overlay view
+/// How: get id and sync "todo" object.
+///      and make timer which work identically
+///      with main app (todo/view.dart).
+/// ====================================================
 class LockOverlayView extends StatefulWidget {
   final String id;
   final String contents;
@@ -29,13 +39,14 @@ class _LockOverlayViewState extends State<LockOverlayView> {
   Timer? _tickTimer;
   late Duration _remainingTime;
 
+  double _tmpWidth = 0;
+  double _tmpHeight = 0;
+
   @override
   void initState() {
     super.initState();
-    log("widget.checkTime: ${widget.checkTime}");
-    log("widget.duration: ${widget.duration}");
+
     _calculateRemaining();
-    log("Initial _remainingTime: $_remainingTime");
     _startCountdown();
   }
 
@@ -44,41 +55,23 @@ class _LockOverlayViewState extends State<LockOverlayView> {
     super.didUpdateWidget(oldWidget);
     log("=== LockOverlayView didUpdateWidget ===");
     log("Old id: ${oldWidget.id}, New id: ${widget.id}");
-    log("Old checkTime: ${oldWidget.checkTime}, New checkTime: ${widget.checkTime}");
-    log("Old duration: ${oldWidget.duration}, New duration: ${widget.duration}");
 
-    // 새로운 Todo가 시작되면 (id가 변경되면) 타이머 재시작
     if (oldWidget.id != widget.id) {
       log("ID changed! Restarting timer...");
-      _tickTimer?.cancel(); // 기존 타이머 취소
+      _tickTimer?.cancel();
       _calculateRemaining();
       log("New _remainingTime: $_remainingTime");
-      _startCountdown(); // 새 타이머 시작
+      _startCountdown();
     }
   }
 
-  ///====================================================
-  /// 타이머 함수 선언
-  /// ====================================================
 
-  // 남은 시간 계산
-  void _calculateRemaining() {
-    if (widget.checkTime != null) {
-      final now = DateTime.now();
 
-      final elapsed = now.difference(widget.checkTime!);
-      final remaining = widget.duration - elapsed;
-      _remainingTime = remaining.isNegative ? Duration.zero : remaining;
-    } else {
-      _remainingTime = widget.duration;
-    }
-  }
-
-  // 1초마다 남은 시간 갱신
+  /// start Timer and finished overlay when remain time smaller than zero.
   void _startCountdown() {
     _tickTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       _calculateRemaining();
-      log("Current _remainingTime: $_remainingTime");
+
 
       if (_remainingTime.inSeconds <= 0) {
         _onFinished();
@@ -92,21 +85,93 @@ class _LockOverlayViewState extends State<LockOverlayView> {
     });
   }
 
-  // 시간이 다 되거나 사용자가 끌 때
+
+  /// Get remaining time from checkTime and now().
+  void _calculateRemaining() {
+    if (widget.checkTime != null) {
+      final now = DateTime.now();
+      final elapsed = now.difference(widget.checkTime!);
+      final remaining = widget.duration - elapsed;
+      _remainingTime = remaining.isNegative ? Duration.zero : remaining;
+    } else {
+      _remainingTime = widget.duration;
+    }
+  }
+
   Future<void> _closeOverlayWithSync() async {
     _tickTimer?.cancel();
     await FlutterOverlayWindow.closeOverlay();
   }
 
+  // Close overlay when Succeed.
   void _onFinished() async {
+    await _saveTodoCompletion(isSuccess: true);
     await _closeOverlayWithSync();
   }
 
+  // Close overlay when Give up.
+  void onGiveUp() async {
+    await _saveTodoCompletion(isSuccess: false);
+    await _closeOverlayWithSync();
+  }
+
+  /// Sync Hive. Search todo object from id.
+  Future<void> _saveTodoCompletion({required bool isSuccess}) async {
+    try {
+      Box<Todo> todoBox;
+
+      // 🔥 핵심: Box를 닫고 다시 열어서 최신 상태 강제 로드
+      if (Hive.isBoxOpen('todos')) {
+        await Hive.box<Todo>('todos').close();
+      }
+
+      // 새로 열기 - 이때 디스크에서 최신 데이터 읽음
+      todoBox = await Hive.openBox<Todo>('todos');
+
+      log("========= Hive Todo List Check [lock] =========");
+      log("Total count: ${todoBox.length}");
+
+      for (int i = 0; i < todoBox.length; i++) {
+        final todo = todoBox.getAt(i);
+        if (todo != null) {
+          log("Index[$i] | Hive Key: ${todoBox.keyAt(i)} | Todo ID: ${todo.id} | Content: ${todo.content}");
+        }
+      }
+      log("========================================");
+
+      // ID로 Todo 찾기
+      Todo? targetTodo;
+      for (var t in todoBox.values) {
+        if (t.id == widget.id) {
+          targetTodo = t;
+          break;
+        }
+      }
+
+      if (targetTodo != null) {
+        // 값 변경
+        targetTodo.done = isSuccess;
+        targetTodo.duration = isSuccess ? Duration.zero : _remainingTime;
+        targetTodo.checkTime = null;
+
+        // 저장 및 디스크 동기화
+        await targetTodo.save();
+        await todoBox.flush(); // 🔥 디스크에 강제 쓰기
+
+        log("Todo Sync Success: ${isSuccess ? 'DONE' : 'GIVE UP'} (ID: ${widget.id})");
+      } else {
+        log("Error: Could not find Todo with ID ${widget.id}");
+      }
+
+    } catch (e) {
+      log("Critical Error in Overlay Hive Sync: $e");
+    }
+  }
+  /// Show duration with format (hh:)mm:ss.
   String _formatDuration(Duration duration) {
     int hours = duration.inHours;
     int minutes = duration.inMinutes.remainder(60);
     int seconds = duration.inSeconds.remainder(60);
-
     if (hours > 0) {
       return "${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}";
     } else {
@@ -120,31 +185,23 @@ class _LockOverlayViewState extends State<LockOverlayView> {
     super.dispose();
   }
 
-  ///====================================================
-  /// 타이머 함수 끝
-  /// ====================================================
-  @override
-  Widget build(BuildContext context) {
-    var par_h = MediaQuery.of(context).size.height;
-    var par_w = MediaQuery.of(context).size.width;
-    return Material(
-      color: Colors.transparent,
-      child: _mode == OverlayMode.temp
-          ? _buildTempUI()
-          : _buildLockUI(par_h, par_w),
-    );
-  }
 
+
+
+  /// Handler for [temp] mode and [lock] mode switch.
   Future<void> _handleTempMode() async {
-    if (_mode == OverlayMode.temp) return; // 중복 호출 방지
+    if (_mode == OverlayMode.temp) return;
 
-    var device_h = MediaQuery.of(context).size.height;
-    var device_w = MediaQuery.of(context).size.width;
+    double device_h = MediaQuery.of(context).size.height;
+    double device_w = MediaQuery.of(context).size.width;
 
-    await FlutterOverlayWindow.resizeOverlay(150, 80, false);
+    _tmpWidth = device_w / 8;
+    _tmpHeight = device_h / 8;
+
+    await FlutterOverlayWindow.resizeOverlay(_tmpWidth.round(), _tmpHeight.round(), false);
     await FlutterOverlayWindow.updateFlag(OverlayFlag.clickThrough);
     await FlutterOverlayWindow.moveOverlay(
-        OverlayPosition(device_w / 2 - 75, device_h / 2 - 40));
+        OverlayPosition((device_w - _tmpWidth) / 2, (device_h - _tmpHeight) / 2));
 
     if (mounted) {
       setState(() {
@@ -152,10 +209,8 @@ class _LockOverlayViewState extends State<LockOverlayView> {
       });
     }
 
-    // 5초 후 lock UI로 복귀
-    Future.delayed(const Duration(seconds: 5), () async {
+    Future.delayed(const Duration(seconds: 10), () async {
       if (!mounted) return;
-
       setState(() {
         _mode = OverlayMode.lock;
       });
@@ -167,212 +222,29 @@ class _LockOverlayViewState extends State<LockOverlayView> {
     });
   }
 
-  Widget _buildLockUI(double par_h, double par_w) {
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12.0),
-        height: par_h,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Color(0xFFF2F0EF),
-        ),
-        child: GestureDetector(
-          child: Stack(
-            children: [
-              SizedBox(
-                height: par_h,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(height: par_h * 0.1),
 
-                    Text(
-                      "앞으로 남은 시간...",
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
 
-                    SizedBox(height: par_h * 0.04),
+  /// Build overlay by mode type.
+  @override
+  Widget build(BuildContext context) {
 
-                    Container(
-                      height: par_h * 0.15,
-                      padding: EdgeInsets.symmetric(
-                        vertical: 20,
-                        horizontal: 24,
-                      ),
-                      margin: EdgeInsets.symmetric(horizontal: par_w * 0.125),
-                      decoration: BoxDecoration(
-                        color: Color(0xFFF25843),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      alignment: Alignment.center,
 
-                      /// Timer 표시 - checkTime과 duration 기반 실시간 계산
-                      child: Text(
-                        _formatDuration(_remainingTime),
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 50,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: par_h * 0.05),
-
-                    Container(
-                      width: double.infinity,
-                      height: par_h * 0.14,
-                      padding: EdgeInsets.symmetric(vertical: 20),
-                      margin: EdgeInsets.symmetric(
-                        horizontal: par_w * 0.125,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      alignment: Alignment.center,
-
-                      child: Text(
-                        "${_formatDuration(widget.duration)} ${widget.contents}",
-                        style: TextStyle(fontSize: 20, color: Colors.black87),
-                      ),
-                    ),
-
-                    /// Tip 컨테이너
-                    Container(
-                      width: double.infinity,
-                      height: par_h * 0.22,
-                      padding: EdgeInsets.symmetric(
-                        vertical: 24,
-                        horizontal: 12,
-                      ),
-                      margin: EdgeInsets.symmetric(
-                        horizontal: par_w * 0.125,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      alignment: Alignment.center,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            "Tip",
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: Color(0xFFF25843),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            "정말 급한 일이 있을 때는 잠시 해제 버튼을 눌러보세요",
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    Container(
-                      margin: EdgeInsets.symmetric(
-                        horizontal: par_w * 0.125,
-                        vertical: 10,
-                      ),
-                      height: par_h * 0.08,
-                      child: Row(
-                        children: [
-                          /// 잠시해제 버튼
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: _handleTempMode,
-                              child: Container(
-                                padding: EdgeInsets.symmetric(vertical: 14),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  "잠시해제",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          SizedBox(width: 16),
-
-                          /// 포기하기 버튼
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () async {
-                                await _closeOverlayWithSync();
-                              },
-                              child: Container(
-                                padding: EdgeInsets.symmetric(vertical: 14),
-                                decoration: BoxDecoration(
-                                  color: Color(0xFFF25843),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  "포기하기",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    Spacer(),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTempUI() {
-    return Align(
-      alignment: Alignment.topRight,
-      child: Container(
-        width: 120,
-        height: 60,
-        margin: const EdgeInsets.only(top: 10, right: 10),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.4),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          _formatDuration(_remainingTime),
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+    return Material(
+      color: Colors.transparent,
+      child: _mode == OverlayMode.temp
+          ? TempUI(
+        remainingTime: _remainingTime,
+        formatDuration: _formatDuration,
+        width: _tmpWidth,
+        height: _tmpHeight,
+      )
+          : LockUI(
+        remainingTime: _remainingTime,
+        contents: widget.contents,
+        duration: widget.duration,
+        formatDuration: _formatDuration,
+        onTempMode: _handleTempMode,
+        onGiveUp: onGiveUp,
       ),
     );
   }
