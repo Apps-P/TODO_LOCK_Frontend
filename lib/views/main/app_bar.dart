@@ -1,35 +1,53 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
-  final String title;
+  final DateTime selectedDate;
 
-  const CustomAppBar({super.key, required this.title});
+  const CustomAppBar({super.key, required this.selectedDate});
+
+  String _resolveTitle() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    final current = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+
+    if (current == today) return '오늘은...';
+    if (current == tomorrow) return '내일은...';
+    return DateFormat('yyyy.MM.dd').format(selectedDate);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final current = DateTime(selectedDate.year, selectedDate.month, selectedDate.day); // 추가
+
     return AppBar(
-      title: Text(title),
+      title: Text(_resolveTitle()),
       centerTitle: true,
-      // 왼쪽 아이콘: Scaffold의 drawer를 엽니다.
       leading: IconButton(
         icon: const Icon(Icons.menu),
-        onPressed: () {
-          Scaffold.of(context).openDrawer();
-        },
+        onPressed: () => Scaffold.of(context).openDrawer(),
       ),
-      // 오른쪽 아이콘: 스위치 모양 아이콘 (기능 없음)
       actions: [
         IconButton(
-          icon: const Icon(Icons.toggle_on_outlined),
+          icon: Icon(current == today          // 아이콘 분기
+              ? Icons.toggle_on_outlined
+              : Icons.toggle_off_outlined),
           onPressed: () {
-            // switch today & tomorrow
+            final target = current == today
+                ? today.add(const Duration(days: 1))
+                : today;
+
+            final dateString = DateFormat('yyyy-MM-dd').format(target);
+            Navigator.pushReplacementNamed(context, '/$dateString');
           },
         ),
       ],
     );
   }
 
-  // AppBar의 표준 높이를 지정합니다.
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
