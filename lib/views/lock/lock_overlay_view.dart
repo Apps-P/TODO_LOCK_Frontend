@@ -128,16 +128,16 @@ class _LockOverlayViewState extends State<LockOverlayView> {
       // 새로 열기 - 이때 디스크에서 최신 데이터 읽음
       todoBox = await Hive.openBox<Todo>('todos');
 
-      log("========= Hive Todo List Check [lock] =========");
-      log("Total count: ${todoBox.length}");
-
-      for (int i = 0; i < todoBox.length; i++) {
-        final todo = todoBox.getAt(i);
-        if (todo != null) {
-          log("Index[$i] | Hive Key: ${todoBox.keyAt(i)} | Todo ID: ${todo.id} | Content: ${todo.content}");
-        }
-      }
-      log("========================================");
+      // log("========= Hive Todo List Check [lock] =========");
+      // log("Total count: ${todoBox.length}");
+      //
+      // for (int i = 0; i < todoBox.length; i++) {
+      //   final todo = todoBox.getAt(i);
+      //   if (todo != null) {
+      //     log("Index[$i] | Hive Key: ${todoBox.keyAt(i)} | Todo ID: ${todo.id} | Content: ${todo.content}");
+      //   }
+      // }
+      // log("========================================");
 
       // ID로 Todo 찾기
       Todo? targetTodo;
@@ -151,8 +151,7 @@ class _LockOverlayViewState extends State<LockOverlayView> {
       if (targetTodo != null) {
         // 값 변경
         targetTodo.done = isSuccess;
-        targetTodo.duration = isSuccess ? Duration.zero : _remainingTime;
-        targetTodo.checkTime = null;
+
 
         // 저장 및 디스크 동기화
         await targetTodo.save();

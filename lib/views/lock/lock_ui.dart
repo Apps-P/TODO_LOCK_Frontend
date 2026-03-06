@@ -81,7 +81,7 @@ class LockUI extends StatelessWidget {
                   Container(
                     width: double.infinity,
                     height: par_h * 0.14,
-                    padding: EdgeInsets.symmetric(vertical: 20),
+                    padding: EdgeInsets.symmetric(vertical: 20, horizontal: 20),
                     margin: EdgeInsets.symmetric(
                       horizontal: par_w * 0.125,
                       vertical: 10,
@@ -91,9 +91,12 @@ class LockUI extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     alignment: Alignment.center,
-                    child: Text(
-                      "${formatDuration(duration)} $contents",
-                      style: TextStyle(fontSize: 20, color: Colors.black87),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.vertical,
+                      child: Text(
+                        "+${formatDuration(duration)}  $contents",
+                        style: TextStyle(fontSize: 20, color: Colors.black87),
+                      ),
                     ),
                   ),
 
