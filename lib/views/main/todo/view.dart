@@ -155,6 +155,16 @@ class _TodoListViewState extends State<TodoListView> {
 
               /// 오버레이 생성
               onChanged: (_) async{
+                // lock == false && 진행 중(checkTime 있음)이면 → 초기 상태로 복귀
+                if (todo.lock == false && todo.checkTime != null) {
+                  todo.done = false;
+                  todo.checkTime = null;
+                  await todo.save();
+                  setState(() {});
+                  return;
+                }
+
+                if(todo.checkTime != null) return;
                 onCheckedTap(todo);
                 setState(() {});
                 if(todo.lock == false || todo.done == true) return;
@@ -201,30 +211,37 @@ class _TodoListViewState extends State<TodoListView> {
                 ),
               ),
               SizedBox(width: 8,),
-              Text(
-                todo.content,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w400,
-                  color: getTodoColor(todo).text,
+              Expanded(
+                child: Text(
+                  todo.content,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w400,
+                    color: getTodoColor(todo).text,
+                  ),
+                  softWrap: true,
+                  overflow: TextOverflow.visible,
                 ),
+
               ),
             ],
           ),
 
-          trailing:
-              IconButton(
-                icon: Icon(MyFlutterApp.edit1, color: getTodoColor(todo).text),
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => TodoEditCreatePage(
-                      todo: todo,
-                      initialDate: widget.selectedDate,
-                    ),
+          trailing: IconButton(
+            icon: Icon(MyFlutterApp.edit1, color: getTodoColor(todo).text),
+            onPressed: () {
+              if (todo.done == true || todo.checkTime != null) return;
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TodoEditCreatePage(
+                    todo: todo,
+                    initialDate: widget.selectedDate,
                   ),
                 ),
-              ),
+              );
+            },
+          ),
         ),
       ),
     );
