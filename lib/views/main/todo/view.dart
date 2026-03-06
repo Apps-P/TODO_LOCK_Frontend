@@ -2,10 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:todo_and_lock/models/todo_model.dart';
-import 'func.dart'; // 앞서 정의한 updateTodoStatus, getTodoColor 등
+import 'func.dart';
 import '../../edit/edit_create_view.dart';
-import 'package:todo_and_lock/views/lock/lock_overlay_view.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:todo_and_lock/my_flutter_app_icons.dart';
 import 'dart:developer';
 
 
@@ -101,116 +102,129 @@ class _TodoListViewState extends State<TodoListView> {
 
   /// 개별 Todo 카드 위젯 (Material 컨테이너)
   Widget _buildTodoCard(BuildContext context, Todo todo, List<Todo> currentList, int index) {
-    return Container(
-      key: ValueKey(todo.id), // Reorderable 필수 키
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: getTodoColor(todo),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+    return Slidable(
+      key: ValueKey(todo.id),
+      /// 오른쪽에서 왼쪽으로 슬라이드 (삭제)
+      endActionPane: ActionPane(
+        motion: const ScrollMotion(),
+        extentRatio: 0.25,
+        dismissible: DismissiblePane(onDismissed: () => _onDelete(currentList, index)),
+        children: [
+          SlidableAction(
+            onPressed: (_) => _onDelete(currentList, index),
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+            icon: Icons.delete,
+            label: '삭제',
+            borderRadius: const BorderRadius.horizontal(right: Radius.circular(16)),
           ),
         ],
       ),
 
-      /// check box: check lock
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Transform.scale(
-          scale: 1.2,
-          child: Checkbox(
-            value: getCheckboxState(todo),
-            activeColor: Colors.orange,
-            shape: const CircleBorder(), // 원형 체크박스 추천
-
-            /// 오버레이 생성
-            onChanged: (_) async{
-              onCheckedTap(todo);
-              setState(() {});
-              if(todo.lock == false || todo.done == true) return;
-
-              // 권한 확인
-              final status = await FlutterOverlayWindow.isPermissionGranted();
-              if(status == false) {
-                await FlutterOverlayWindow.requestPermission();
-                return;
-              }
-
-              if (await FlutterOverlayWindow.isActive()) return;
-
-              await FlutterOverlayWindow.showOverlay(
-                enableDrag: false,
-                overlayTitle: "overlay test",
-                overlayContent: 'Overlay Enabled',
-                flag: OverlayFlag.defaultFlag,
-                visibility: NotificationVisibility.visibilityPublic,
-                positionGravity: PositionGravity.auto,
-                height: WindowSize.matchParent,
-                width: WindowSize.matchParent,
-                startPosition: const OverlayPosition(0, 0),
-              );
-
-
-              await FlutterOverlayWindow.shareData({
-                'id': todo.id,
-                'contents': todo.content,
-                'duration': todo.duration.inSeconds,
-                'checkTime': todo.checkTime?.toIso8601String() ?? '',
-              });
-
-              log("Data sent successfully");
-
-            },
-
-          ),
-        ),
-        title: Text(
-          todo.content,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            decoration: todo.done ? TextDecoration.lineThrough : null,
-            color: todo.done ? Colors.grey : Colors.black87,
-          ),
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.fromLTRB(0, 2.0, 0, 0),
-          child: Text("Priority: ${todo.no}", style: const TextStyle(fontSize: 12)),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              formatTimeText(todo),
-              style: TextStyle(
-                fontFamily: 'Courier', // 타이머 텍스트 고정폭 추천
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-                color: todo.checkTime != null && !todo.done ? Colors.deepOrange : Colors.grey[700],
-              ),
-            ),
-            const SizedBox(width: 8),
-            PopupMenuButton(
-              icon: const Icon(Icons.more_vert),
-              itemBuilder: (context) => [
-                const PopupMenuItem(value: 'edit', child: Text("수정")),
-                const PopupMenuItem(value: 'delete', child: Text("삭제", style: TextStyle(color: Colors.red))),
-              ],
-              onSelected: (val) {
-                if (val == 'edit') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => TodoEditCreatePage(todo: todo, initialDate: widget.selectedDate)),
-                  );
-                } else if (val == 'delete') {
-                  _onDelete(currentList, index);
-                }
-              },
+      child: Container(
+        // key: ValueKey(todo.id), // Slidable로 이동했으므로 제거
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        decoration: BoxDecoration(
+          color: getTodoColor(todo).background,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
             ),
           ],
+        ),
+
+
+        /// check box: check lock
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          leading: Transform.scale(
+            scale: 1.2,
+            child: Checkbox(
+              value: getCheckboxState(todo),
+              activeColor: getTodoColor(todo).background,
+              checkColor: getTodoColor(todo).text,
+              side: WidgetStateBorderSide.resolveWith(
+                    (states) => BorderSide(
+                  color: getTodoColor(todo).text,  // 체크 전/후 동일한 색
+                  width: 1.6,
+                ),
+              ),
+
+              /// 오버레이 생성
+              onChanged: (_) async{
+                onCheckedTap(todo);
+                setState(() {});
+                if(todo.lock == false || todo.done == true) return;
+
+                // 권한 확인
+                final status = await FlutterOverlayWindow.isPermissionGranted();
+                if(status == false) {
+                  await FlutterOverlayWindow.requestPermission();
+                  return;
+                }
+
+                if (await FlutterOverlayWindow.isActive()) return;
+
+                await FlutterOverlayWindow.showOverlay(
+                  enableDrag: false,
+                  overlayTitle: "overlay test",
+                  overlayContent: 'Overlay Enabled',
+                  flag: OverlayFlag.defaultFlag,
+                  visibility: NotificationVisibility.visibilityPublic,
+                  positionGravity: PositionGravity.auto,
+                  height: WindowSize.matchParent,
+                  width: WindowSize.matchParent,
+                  startPosition: const OverlayPosition(0, 0),
+                );
+
+
+                await FlutterOverlayWindow.shareData({
+                  'id': todo.id,
+                  'contents': todo.content,
+                  'duration': todo.duration.inSeconds,
+                  'checkTime': todo.checkTime?.toIso8601String() ?? '',
+                });
+              },
+
+            ),
+          ),
+          title: Row(
+            children: [
+              Text(
+                formatTimeText(todo),
+                style: TextStyle(
+                  fontSize: 20,
+                  color: getTodoColor(todo).text,
+                ),
+              ),
+              SizedBox(width: 8,),
+              Text(
+                todo.content,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w400,
+                  color: getTodoColor(todo).text,
+                ),
+              ),
+            ],
+          ),
+
+          trailing:
+              IconButton(
+                icon: Icon(MyFlutterApp.edit1, color: getTodoColor(todo).text),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => TodoEditCreatePage(
+                      todo: todo,
+                      initialDate: widget.selectedDate,
+                    ),
+                  ),
+                ),
+              ),
         ),
       ),
     );

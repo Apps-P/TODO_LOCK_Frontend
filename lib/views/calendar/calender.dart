@@ -46,9 +46,9 @@ class _CalendarViewState extends State<CalendarView> {
     final firstDay = DateTime(_focusedMonth.year, _focusedMonth.month, 1);
     final lastDay = DateTime(_focusedMonth.year, _focusedMonth.month + 1, 0);
 
-    // 월요일 시작 기준 (0=Mon, 6=Sun)
-    // weekday: 1=Mon, 7=Sun → 앞 공백 수 = weekday - 1
-    final leadingBlanks = (firstDay.weekday - 1) % 7;
+    // 일요일 시작 기준 (0=Sun, 6=Sat)
+    // weekday: 1=Mon ... 7=Sun → 일요일 앞 공백 = weekday % 7
+    final leadingBlanks = firstDay.weekday % 7;
 
     final days = <DateTime?>[];
 
@@ -90,7 +90,8 @@ class _CalendarViewState extends State<CalendarView> {
     // fallback: 'ko' locale 없을 경우 영문
     // final monthLabel = DateFormat('yyyy년 MM월').format(_focusedMonth);
 
-    const weekLabels = ['월', '화', '수', '목', '금', '토', '일'];
+    // ── 요일 라벨 ──
+    const weekLabels = ['일', '월', '화', '수', '목', '금', '토'];
 
     return Scaffold(
       appBar: AppBar(
@@ -176,11 +177,11 @@ class _CalendarViewState extends State<CalendarView> {
                 final isSelected = _isSelected(date);
                 final isToday = _isToday(date);
 
-                // 일요일: index % 7 == 6, 토요일: index % 7 == 5
-                final dayOfWeek = index % 7; // 0=Mon ... 5=Sat, 6=Sun
+                // 0=Sun(빨강), 6=Sat(파랑)
+                final dayOfWeek = index % 7;
                 Color? textColor;
-                if (dayOfWeek == 6) textColor = Colors.red[400];
-                if (dayOfWeek == 5) textColor = Colors.blue[400];
+                if (dayOfWeek == 0) textColor = Colors.red[400];   // 일요일
+                if (dayOfWeek == 6) textColor = Colors.blue[400];  // 토요일
 
                 return GestureDetector(
                   onTap: () => _onDateTap(date),

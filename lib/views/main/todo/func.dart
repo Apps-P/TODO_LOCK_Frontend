@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:todo_and_lock/models/todo_model.dart';
+import 'package:todo_and_lock/theme/app_colors.dart';
 
 /// 1. 타이머 업데이트 로직 (UI 갱신 필요 여부 반환)
 /// 매 초마다 Box를 순회하며 시간이 다 된 항목을 처리합니다.
@@ -44,10 +45,10 @@ void onCheckedTap(Todo todo) {
 }
 
 /// 3. 상태별 배경색 결정
-Color getTodoColor(Todo todo) {
-  if (todo.done) return Colors.grey[200]!; // 완료: 회색
-  if (todo.checkTime != null) return Colors.orange[100]!; // 진행중: 오렌지
-  return Colors.white; // 시작 전: 흰색
+({Color background, Color text}) getTodoColor(Todo todo) {
+  if (todo.done) return (background: Colors.grey[200]!, text: AppColors.greyTxt); // 완료: 회색
+  if (todo.checkTime != null) return (background: AppColors.carrot, text: Colors.white); // 진행중: 오렌지
+  return (background: AppColors.listbg, text: Colors.black);  // 시작 전: 흰색
 }
 
 /// 4. 체크박스 UI 상태 (시작 전만 빈 체크박스)
