@@ -8,6 +8,9 @@ class AppColors {
   static const Color beige = Color(0xFFFDF4E3);
   static const Color softwhite = Color(0xFFFAFAFA);
   static const Color listbg = Color(0xFFF5F2F2);
+  static const Color listbgEnd = Color(0x33F5F2F2);
+  static const Color greyTxt = Color(0xFFBDBDBD);
+  static const Color listbgDone = Color(0xFFE0E0E0);
 
   // gray scale
   static const Color black100 = Color(0xFF000000);

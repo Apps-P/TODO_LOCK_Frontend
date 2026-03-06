@@ -156,7 +156,7 @@ class _LockOverlayViewState extends State<LockOverlayView> {
 
         // 저장 및 디스크 동기화
         await targetTodo.save();
-        await todoBox.flush(); // 🔥 디스크에 강제 쓰기
+        await todoBox.flush(); // Write on disk directly
 
         log("Todo Sync Success: ${isSuccess ? 'DONE' : 'GIVE UP'} (ID: ${widget.id})");
       } else {
@@ -231,6 +231,7 @@ class _LockOverlayViewState extends State<LockOverlayView> {
 
     return Material(
       color: Colors.transparent,
+      textStyle: const TextStyle(fontFamily: 'Paperlogy'),
       child: _mode == OverlayMode.temp
           ? TempUI(
         remainingTime: _remainingTime,

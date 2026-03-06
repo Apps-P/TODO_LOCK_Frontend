@@ -46,6 +46,7 @@ class LockUI extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
+                      color: Colors.black,
                     ),
                   ),
 
@@ -126,7 +127,7 @@ class LockUI extends StatelessWidget {
                         ),
                         SizedBox(height: 8),
                         Text(
-                          "정말 급한 일이 있을 때는 잠시 해제 버튼을 눌러보세요",
+                          "정말 급한 일이 있을 때는 \n 잠시 해제 버튼을 눌러보세요",
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 16,
