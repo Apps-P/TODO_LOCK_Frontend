@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:todo_and_lock/models/todo_model.dart';
 import 'package:todo_and_lock/theme/app_colors.dart';
+import 'package:todo_and_lock/sync_service.dart';
 
 /// 1. 타이머 업데이트 로직 (UI 갱신 필요 여부 반환)
 /// 매 초마다 Box를 순회하며 시간이 다 된 항목을 처리합니다.
@@ -22,6 +23,7 @@ bool updateTodoStatus(Box<Todo> box) {
         // 시간이 다 되면 자동으로 완료 처리
         todo.done = true;
         todo.save();
+        SyncService.pushTodo(todo);
       } else {
         // 아직 진행 중인 항목이 하나라도 있다면 UI를 갱신해야 함
         needsUiUpdate = true;
@@ -42,6 +44,7 @@ void onCheckedTap(Todo todo) {
   }
 
   todo.save();
+  SyncService.pushTodo(todo);
 }
 
 /// 3. 상태별 배경색 결정
