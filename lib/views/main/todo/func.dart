@@ -61,17 +61,22 @@ String formatTimeText(Todo todo) {
   final now = DateTime.now();
   Duration displayDuration = todo.duration;
 
-  // 진행 중일 때만 '남은 시간' 계산
   if (todo.checkTime != null && !todo.done) {
     final remaining = todo.duration - now.difference(todo.checkTime!);
     displayDuration = remaining.isNegative ? Duration.zero : remaining;
   }
 
   String twoDigits(int n) => n.toString().padLeft(2, "0");
-  String minutes = twoDigits(displayDuration.inMinutes.remainder(60));
-  String seconds = twoDigits(displayDuration.inSeconds.remainder(60));
 
-  // 진행 중일 때는 앞에 '+' 또는 '-' 표시를 붙여 구분 가능 (선택 사항)
+  final hours = displayDuration.inHours;
+  final minutes = twoDigits(displayDuration.inMinutes.remainder(60));
+  final seconds = twoDigits(displayDuration.inSeconds.remainder(60));
+
   final prefix = (todo.checkTime != null && !todo.done) ? "+" : "";
+
+  // hours가 0이면 MM:SS, 있으면 H:MM:SS
+  if (hours > 0) {
+    return "$prefix$hours:$minutes:$seconds";
+  }
   return "$prefix$minutes:$seconds";
 }

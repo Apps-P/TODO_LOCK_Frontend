@@ -30,7 +30,7 @@ class _TodoEditCreatePageState extends State<TodoEditCreatePage> {
     _todoBox = Hive.box<Todo>('todos');
     _selectedDate = widget.todo?.date ?? widget.initialDate;
     _contentController.text = widget.todo?.content ?? "";
-    _selectedMinutes = widget.todo?.duration.inMinutes ?? 10; // 기본 10분
+    _selectedMinutes = widget.todo?.duration.inMinutes.remainder(60) ?? 10; // 기본 10분
     _selectedHours = widget.todo?.duration.inHours ?? 0;
     _isLocked = widget.todo?.lock ?? false;
   }
@@ -68,7 +68,7 @@ class _TodoEditCreatePageState extends State<TodoEditCreatePage> {
       final newTodo = Todo(
         content: _contentController.text,
         lock: _isLocked, // 3. 설정된 Lock 값 반영
-        duration: Duration(minutes: _selectedMinutes),
+        duration: Duration(minutes: _selectedMinutes, hours: _selectedHours),
       )
         ..date = _selectedDate
         ..user_id = "user_1"
@@ -81,7 +81,7 @@ class _TodoEditCreatePageState extends State<TodoEditCreatePage> {
       final oldDate = todo.date;
 
       todo.content = _contentController.text;
-      todo.duration = Duration(minutes: _selectedMinutes);
+      todo.duration = Duration(minutes: _selectedMinutes, hours: _selectedHours);
       todo.lock = _isLocked; // 4. 수정된 Lock 값 반영
 
       if (!isSameDay(oldDate, _selectedDate)) {

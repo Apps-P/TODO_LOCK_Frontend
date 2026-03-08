@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:todo_and_lock/theme/sliding_toggle.dart';
+import 'package:todo_and_lock/theme/app_colors.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -119,6 +120,8 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
           SlidingToggle(
             value: value,
             onChanged: onChanged,
+            beginColor: AppColors.white,
+            endColor: AppColors.carrot,
           ),
         ],
       ),

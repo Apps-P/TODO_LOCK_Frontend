@@ -41,6 +41,7 @@ class _LockOverlayViewState extends State<LockOverlayView> {
 
   double _tmpWidth = 0;
   double _tmpHeight = 0;
+  int _tempPressCount = 0;
 
   @override
   void initState() {
@@ -128,17 +129,6 @@ class _LockOverlayViewState extends State<LockOverlayView> {
       // 새로 열기 - 이때 디스크에서 최신 데이터 읽음
       todoBox = await Hive.openBox<Todo>('todos');
 
-      // log("========= Hive Todo List Check [lock] =========");
-      // log("Total count: ${todoBox.length}");
-      //
-      // for (int i = 0; i < todoBox.length; i++) {
-      //   final todo = todoBox.getAt(i);
-      //   if (todo != null) {
-      //     log("Index[$i] | Hive Key: ${todoBox.keyAt(i)} | Todo ID: ${todo.id} | Content: ${todo.content}");
-      //   }
-      // }
-      // log("========================================");
-
       // ID로 Todo 찾기
       Todo? targetTodo;
       for (var t in todoBox.values) {
@@ -190,6 +180,13 @@ class _LockOverlayViewState extends State<LockOverlayView> {
   /// Handler for [temp] mode and [lock] mode switch.
   Future<void> _handleTempMode() async {
     if (_mode == OverlayMode.temp) return;
+
+    // 3번 초과 시 버튼 비활성화 처리 (LockUI에서 색상/동작 제어)
+    if (_tempPressCount >= 3) return;
+
+    setState(() {
+      _tempPressCount++;
+    });
 
     double device_h = MediaQuery.of(context).size.height;
     double device_w = MediaQuery.of(context).size.width;
@@ -245,6 +242,7 @@ class _LockOverlayViewState extends State<LockOverlayView> {
         formatDuration: _formatDuration,
         onTempMode: _handleTempMode,
         onGiveUp: onGiveUp,
+        tempPressCount: _tempPressCount,
       ),
     );
   }
