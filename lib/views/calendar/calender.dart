@@ -116,7 +116,7 @@ class _CalendarViewState extends State<CalendarView> {
                 Text(
                   monthLabel,
                   style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 IconButton(
@@ -155,7 +155,7 @@ class _CalendarViewState extends State<CalendarView> {
           ),
 
           const SizedBox(height: 8),
-          const Divider(height: 1),
+          const Divider(height: 1,color: Colors.black26,indent: 10, endIndent: 10,),
 
           // ── 날짜 그리드 ──
           Expanded(

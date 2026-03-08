@@ -191,37 +191,24 @@ class _TodoEditCreatePageState extends State<TodoEditCreatePage> {
 
               // Todo typo
               ListTile(
-                  title: Row(
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            "Todo",
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
-                          ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            "할 일 내용",
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
-                          ),
-                        ],
+                title: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Todo",
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
+                    ),
+
+                    TextField(  // 👈 Expanded 제거
+                      controller: _contentController,
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        hintText: "할 일 내용",
+                        hintStyle: TextStyle(color: Colors.grey),
                       ),
-                      const SizedBox(width: 20,),
-                      Expanded(
-                        child: TextField(
-                          controller: _contentController,
-                          decoration: const InputDecoration(
-                            border: InputBorder.none,
-                            hintText: "할 일을 입력하세요.",
-                            hintStyle: TextStyle(
-                              color: Colors.grey,
-                            )
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
+                    ),
+                  ],
+                ),
               ),
 
 
