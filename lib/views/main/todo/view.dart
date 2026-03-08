@@ -7,6 +7,7 @@ import '../../edit/edit_create_view.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:todo_and_lock/my_flutter_app_icons.dart';
+import 'package:todo_and_lock/sync_service.dart';
 import 'dart:developer';
 
 
@@ -64,6 +65,7 @@ class _TodoListViewState extends State<TodoListView> {
   void _onDelete(List<Todo> todos, int index) async {
     final todo = todos[index];
     await todo.delete();
+    await SyncService.deleteTodo(todo.id);
 
     todos.removeAt(index);
     for (int i = 0; i < todos.length; i++) {
@@ -160,6 +162,7 @@ class _TodoListViewState extends State<TodoListView> {
                   todo.done = false;
                   todo.checkTime = null;
                   await todo.save();
+                  await SyncService.pushTodo(todo);
                   setState(() {});
                   return;
                 }

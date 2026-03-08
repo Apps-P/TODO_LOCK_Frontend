@@ -9,8 +9,12 @@ import 'package:todo_and_lock/views/edit/edit_create_view.dart';
 import 'package:todo_and_lock/views/main/main_view.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:todo_and_lock/views/calendar/calender.dart';
-import 'package:todo_and_lock/views/main/setting.dart';
+import 'package:todo_and_lock/views/setting/setting.dart';
+import 'package:todo_and_lock/views/main/achievement.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'sync_service.dart';
 
 import 'dart:developer';
 
@@ -19,9 +23,21 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('ko', null);
   await Hive.initFlutter();
+  await dotenv.load(fileName: ".env");
 
+
+  await Supabase.initialize(
+    url: dotenv.env['SUPABASE_URL'] ?? "default_value",
+    anonKey:dotenv.env['ANON_KEY'] ?? "default_value" ,
+  );
+
+  final supabase = Supabase.instance.client;
   Hive.registerAdapter(TodoAdapter());
   Hive.registerAdapter(DurationAdapter());
+
+
+
+  await SyncService.syncOnStartup();
   await Hive.openBox<Todo>('todos');
 
   runApp(const MyApp());
@@ -151,6 +167,7 @@ class MyApp extends StatelessWidget {
         '/create': (_) => TodoEditCreatePage(todo: null, initialDate: DateTime.now()),
         '/calendar': (_) => CalendarView(selectedDate: DateTime.now()),
         '/setting':(_) => SettingsPage(),
+        '/achievement':(_) => Achievement(),
       },
     );
   }

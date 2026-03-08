@@ -5,6 +5,7 @@ import 'package:todo_and_lock/models/todo_model.dart';
 import 'package:todo_and_lock/theme/app_colors.dart';
 import 'package:todo_and_lock/theme/sliding_toggle.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:todo_and_lock/sync_service.dart';
 
 class TodoEditCreatePage extends StatefulWidget {
   final Todo? todo; // null이면 Create, 아니면 Edit
@@ -88,9 +89,11 @@ class _TodoEditCreatePageState extends State<TodoEditCreatePage> {
         todo.date = _selectedDate;
         todo.no = _getNextNo(_selectedDate);
         await todo.save();
+        await SyncService.pushTodo(todo);
         _reorderOldDate(oldDate);
       } else {
         await todo.save();
+        await SyncService.pushTodo(todo);
       }
     }
 
@@ -249,7 +252,7 @@ class _TodoEditCreatePageState extends State<TodoEditCreatePage> {
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
-                      color: AppColors.carrot.withAlpha(50),
+                      color: AppColors.carrot.withAlpha(128),
                       width: 0.5,
                       style: BorderStyle.solid, // solid, none
                     ),
