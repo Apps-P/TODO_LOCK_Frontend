@@ -34,7 +34,10 @@ class MainView extends StatelessWidget {
               decoration: const BoxDecoration(color: AppColors.listbg),
             ),
             InkWell(
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/setting');
+              },
               splashColor: AppColors.black40,
               child: const ListTile(
                 leading: Icon(Icons.settings),

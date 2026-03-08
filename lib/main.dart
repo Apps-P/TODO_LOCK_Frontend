@@ -9,7 +9,9 @@ import 'package:todo_and_lock/views/edit/edit_create_view.dart';
 import 'package:todo_and_lock/views/main/main_view.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:todo_and_lock/views/calendar/calender.dart';
+import 'package:todo_and_lock/views/main/setting.dart';
 import 'package:intl/date_symbol_data_local.dart';
+
 import 'dart:developer';
 
 
@@ -148,6 +150,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/create': (_) => TodoEditCreatePage(todo: null, initialDate: DateTime.now()),
         '/calendar': (_) => CalendarView(selectedDate: DateTime.now()),
+        '/setting':(_) => SettingsPage(),
       },
     );
   }

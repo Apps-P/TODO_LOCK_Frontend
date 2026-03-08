@@ -8,6 +8,7 @@ class LockUI extends StatelessWidget {
   final String Function(Duration) formatDuration;
   final VoidCallback onTempMode;
   final void Function() onGiveUp;
+  final int tempPressCount;
 
   const LockUI({
     super.key,
@@ -17,12 +18,15 @@ class LockUI extends StatelessWidget {
     required this.formatDuration,
     required this.onTempMode,
     required this.onGiveUp,
+    required this.tempPressCount,
   });
 
   @override
   Widget build(BuildContext context) {
     var par_h = MediaQuery.of(context).size.height;
     var par_w = MediaQuery.of(context).size.width;
+
+    final bool isTempDisabled = tempPressCount >= 3;
 
     return Center(
       child: Container(
@@ -153,19 +157,24 @@ class LockUI extends StatelessWidget {
                         // 잠시해제 버튼
                         Expanded(
                           child: GestureDetector(
-                            onTap: onTempMode,
+                            onTap: isTempDisabled ? null : onTempMode,
                             child: Container(
                               padding: EdgeInsets.symmetric(vertical: 14),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: isTempDisabled
+                                    ? Colors.black26
+                                    : Colors.white,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               alignment: Alignment.center,
                               child: Text(
-                                "잠시해제",
+                                "잠시해제\n    $tempPressCount/3",
                                 style: TextStyle(
                                   fontSize: 16,
-                                  color: Colors.black87,
+                                  fontWeight: FontWeight.w400,
+                                  color: isTempDisabled
+                                      ? Colors.white
+                                      : Colors.black87,
                                 ),
                               ),
                             ),
@@ -192,6 +201,7 @@ class LockUI extends StatelessWidget {
                                 "포기하기",
                                 style: TextStyle(
                                   fontSize: 16,
+                                  fontWeight: FontWeight.w400,
                                   color: Colors.white,
                                 ),
                               ),
