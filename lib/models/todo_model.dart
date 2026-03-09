@@ -1,39 +1,45 @@
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 
-part 'job_model.g.dart';
+part 'todo_model.g.dart';
+
 
 var uuid = Uuid();
 
 @HiveType(typeId: 0)
-class Job extends HiveObject {
+class Todo extends HiveObject {
   @HiveField(0)
   late String id;
 
   @HiveField(1)
-  late DateTime createdAt;
+  late String user_id;
 
   @HiveField(2)
-  late String content;
+  late DateTime date;
 
   @HiveField(3)
-  late String lock;
+  late int no;
 
   @HiveField(4)
-  late DateTime? checkTime;
+  late String content;
 
   @HiveField(5)
-  late Duration duration;
+  late bool lock;
 
   @HiveField(6)
+  late DateTime? checkTime;
+
+  @HiveField(7)
+  late Duration duration;
+
+  @HiveField(8)
   late bool done;
 
-  Job({
+  Todo({
     required this.content,
     required this.lock,
     required this.duration,
     this.done = false,
   }) : id = uuid.v4(), // UUID 자동 생성
-       createdAt = DateTime.now(), // 현재 시각 자동 설정
        checkTime = null;
 }
