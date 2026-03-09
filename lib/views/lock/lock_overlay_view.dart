@@ -63,6 +63,10 @@ class _LockOverlayViewState extends State<LockOverlayView> {
       _calculateRemaining();
       log("New _remainingTime: $_remainingTime");
       _startCountdown();
+
+      setState(() {
+        _tempPressCount = 0;
+      });
     }
   }
 
@@ -191,7 +195,7 @@ class _LockOverlayViewState extends State<LockOverlayView> {
     double device_h = MediaQuery.of(context).size.height;
     double device_w = MediaQuery.of(context).size.width;
 
-    _tmpWidth = device_w / 8;
+    _tmpWidth = device_w / 4;
     _tmpHeight = device_h / 8;
 
     await FlutterOverlayWindow.resizeOverlay(_tmpWidth.round(), _tmpHeight.round(), false);
@@ -207,14 +211,18 @@ class _LockOverlayViewState extends State<LockOverlayView> {
 
     Future.delayed(const Duration(seconds: 10), () async {
       if (!mounted) return;
+
+      // 1. 먼저 크기/플래그 복구
+      await FlutterOverlayWindow.moveOverlay(OverlayPosition(0, 0));
+      await FlutterOverlayWindow.resizeOverlay(
+          WindowSize.matchParent, WindowSize.matchParent, false);
+      await FlutterOverlayWindow.updateFlag(OverlayFlag.defaultFlag);
+
+      // 2. 크기 복구 후 UI 전환
+      if (!mounted) return;
       setState(() {
         _mode = OverlayMode.lock;
       });
-
-      await FlutterOverlayWindow.moveOverlay(OverlayPosition(0, 0));
-      await FlutterOverlayWindow.updateFlag(OverlayFlag.defaultFlag);
-      await FlutterOverlayWindow.resizeOverlay(
-          WindowSize.matchParent, WindowSize.matchParent, false);
     });
   }
 
