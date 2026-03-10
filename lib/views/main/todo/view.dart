@@ -104,10 +104,12 @@ class _TodoListViewState extends State<TodoListView> {
 
   /// 개별 Todo 카드 위젯 (Material 컨테이너)
   Widget _buildTodoCard(BuildContext context, Todo todo, List<Todo> currentList, int index) {
+    final bool isDeletable = todo.checkTime == null || todo.done == true || todo.lock == false;
+    /// 오른쪽에서 왼쪽으로 슬라이드 (삭제)
     return Slidable(
       key: ValueKey(todo.id),
-      /// 오른쪽에서 왼쪽으로 슬라이드 (삭제)
-      endActionPane: ActionPane(
+      // delete 가능하면 삭제
+      endActionPane: isDeletable ? ActionPane(
         motion: const ScrollMotion(),
         extentRatio: 0.25,
         dismissible: DismissiblePane(onDismissed: () => _onDelete(currentList, index)),
@@ -121,10 +123,9 @@ class _TodoListViewState extends State<TodoListView> {
             borderRadius: const BorderRadius.horizontal(right: Radius.circular(16)),
           ),
         ],
-      ),
+      ) : null, // 아니면 아무것도 안함.
 
       child: Container(
-        // key: ValueKey(todo.id), // Slidable로 이동했으므로 제거
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         decoration: BoxDecoration(
           color: getTodoColor(todo).background,
@@ -156,7 +157,7 @@ class _TodoListViewState extends State<TodoListView> {
               ),
 
               /// 오버레이 생성
-              onChanged: (_) async{
+              onChanged: (_) async {
                 // lock == false && 진행 중(checkTime 있음)이면 → 초기 상태로 복귀
                 if (todo.lock == false && todo.checkTime != null) {
                   todo.done = false;
@@ -167,17 +168,20 @@ class _TodoListViewState extends State<TodoListView> {
                   return;
                 }
 
-                if(todo.checkTime != null) return;
+                if (todo.checkTime != null) return;
+
+                // lock 상태일 때 권한 확인을 onCheckedTap보다 먼저
+                if (todo.lock == true && todo.done == false) {
+                  final status = await FlutterOverlayWindow.isPermissionGranted();
+                  if (status == false) {
+                    await FlutterOverlayWindow.requestPermission();
+                    return; // 권한 없으면 체크 안 함
+                  }
+                }
+
                 onCheckedTap(todo);
                 setState(() {});
-                if(todo.lock == false || todo.done == true) return;
-
-                // 권한 확인
-                final status = await FlutterOverlayWindow.isPermissionGranted();
-                if(status == false) {
-                  await FlutterOverlayWindow.requestPermission();
-                  return;
-                }
+                if (todo.lock == false || todo.done == true) return;
 
                 if (await FlutterOverlayWindow.isActive()) return;
 
@@ -192,7 +196,6 @@ class _TodoListViewState extends State<TodoListView> {
                   width: WindowSize.matchParent,
                   startPosition: const OverlayPosition(0, 0),
                 );
-
 
                 await FlutterOverlayWindow.shareData({
                   'id': todo.id,
