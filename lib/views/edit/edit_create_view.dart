@@ -118,173 +118,173 @@ class _TodoEditCreatePageState extends State<TodoEditCreatePage> {
       appBar: AppBar(title: Text(widget.todo == null ? "Todo 생성" : "Todo 수정")),
       body: Padding(
         padding: const EdgeInsets.all(10.0),
-
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: 40),
-          child: Column(
-            children: [
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // 시간
-                  SizedBox(
-                    width: 80,
-                    height: 150,
-                    child: // 시간 picker
-                    ListWheelScrollView(
-                      controller: FixedExtentScrollController(initialItem: _selectedHours),
-                      itemExtent: 52,
-                      perspective: 0.0001,
-                      diameterRatio: 100,
-                      physics: const FixedExtentScrollPhysics(),
-                      onSelectedItemChanged: (index) {
-                        setState(() => _selectedHours = index);
-                      },
-                      children: List.generate(
-                        24,
-                            (i) => Center(
-                          child: Text(
-                            i.toString().padLeft(2, '0'),
-                            style: TextStyle(
-                              fontSize: 44,
-                              color: i == _selectedHours
-                                  ? Colors.black
-                                  : Colors.black26,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const Text(" : ", style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold)),
-                  // 분
-                  SizedBox(
-                    width: 80,
-                    height: 150,
-                    child: ListWheelScrollView(
-                      controller: FixedExtentScrollController(initialItem: _selectedMinutes),
-                      itemExtent: 52,
-                      perspective: 0.0001,
-                      diameterRatio: 100,
-                      physics: const FixedExtentScrollPhysics(),
-                      onSelectedItemChanged: (index) {
-                        setState(() => _selectedMinutes = index % 60);
-                      },
-                      children: List.generate(
-                        60,
-                            (i) => Center(
-                          child: Text(
-                            i.toString().padLeft(2, '0'),
-                            style: TextStyle(
-                              fontSize: 44,
-                              color: i == _selectedMinutes
-                                  ? Colors.black
-                                  : Colors.black26,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 50,),
-
-
-              // Todo typo
-              ListTile(
-                title: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        child:SingleChildScrollView(
+          child: Container(
+            padding: EdgeInsets.fromLTRB(0, 40, 0, 0),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
-                      "Todo",
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
+                    // 시간
+                    SizedBox(
+                      width: 80,
+                      height: 150,
+                      child: // 시간 picker
+                      ListWheelScrollView(
+                        controller: FixedExtentScrollController(initialItem: _selectedHours),
+                        itemExtent: 52,
+                        perspective: 0.0001,
+                        diameterRatio: 100,
+                        physics: const FixedExtentScrollPhysics(),
+                        onSelectedItemChanged: (index) {
+                          setState(() => _selectedHours = index);
+                        },
+                        children: List.generate(
+                          24,
+                              (i) => Center(
+                            child: Text(
+                              i.toString().padLeft(2, '0'),
+                              style: TextStyle(
+                                fontSize: 44,
+                                color: i == _selectedHours
+                                    ? Colors.black
+                                    : Colors.black26,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-
-                    TextField(  // 👈 Expanded 제거
-                      controller: _contentController,
-                      decoration: const InputDecoration(
-                        border: InputBorder.none,
-                        hintText: "할 일 내용",
-                        hintStyle: TextStyle(color: Colors.grey),
+                    const Text(" : ", style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold)),
+                    // 분
+                    SizedBox(
+                      width: 80,
+                      height: 150,
+                      child: ListWheelScrollView(
+                        controller: FixedExtentScrollController(initialItem: _selectedMinutes),
+                        itemExtent: 52,
+                        perspective: 0.0001,
+                        diameterRatio: 100,
+                        physics: const FixedExtentScrollPhysics(),
+                        onSelectedItemChanged: (index) {
+                          setState(() => _selectedMinutes = index % 60);
+                        },
+                        children: List.generate(
+                          60,
+                              (i) => Center(
+                            child: Text(
+                              i.toString().padLeft(2, '0'),
+                              style: TextStyle(
+                                fontSize: 44,
+                                color: i == _selectedMinutes
+                                    ? Colors.black
+                                    : Colors.black26,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
+                const SizedBox(height: 50,),
 
 
-              Container(
-                height: 1,
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: AppColors.carrot.withAlpha(128),
-                      width: 0.5,
-                      style: BorderStyle.solid, // solid, none
+                // Todo typo
+                ListTile(
+                  title: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Todo",
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
+                      ),
+
+                      TextField(  // 👈 Expanded 제거
+                        controller: _contentController,
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          hintText: "할 일 내용",
+                          hintStyle: TextStyle(color: Colors.grey),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+
+                Container(
+                  height: 1,
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: AppColors.carrot.withAlpha(128),
+                        width: 0.5,
+                        style: BorderStyle.solid, // solid, none
+                      ),
                     ),
                   ),
                 ),
-              ),
 
-              // Date selector
-              ListTile(
-                title: const Text("날짜 선택"),
-                subtitle: Text("${_selectedDate.toLocal()}".split(' ')[0]),
-                trailing: const Icon(Icons.calendar_today),
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: _selectedDate,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2100),
-                  );
-                  if (picked != null) setState(() => _selectedDate = picked);
-                },
-              ),
-
-
-              Container(
-                height: 1,
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: AppColors.carrot.withAlpha(128),
-                      width: 0.5,
-                      style: BorderStyle.solid, // solid, none
-                    ),
-                  ),
-                ),
-              ),
-
-              // 5. Lock 상태 체크박스 추가
-
-              ListTile(
-                title: const Text("항목 잠금 (Lock)"),
-                subtitle: const Text("잠구기"),
-                trailing: SlidingToggle(
-                  value: _isLocked,
-                  onChanged: (bool value) {
-                    setState(() => _isLocked = value);
+                // Date selector
+                ListTile(
+                  title: const Text("날짜 선택"),
+                  subtitle: Text("${_selectedDate.toLocal()}".split(' ')[0]),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _selectedDate,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) setState(() => _selectedDate = picked);
                   },
-                  beginColor: AppColors.white,
-                  endColor: AppColors.carrot,
                 ),
-              ),
-              SizedBox(height: 10,),
-              ElevatedButton(
-                onPressed: _onSave,
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 50),
-                  backgroundColor: AppColors.carrot,
+
+
+                Container(
+                  height: 1,
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: AppColors.carrot.withAlpha(128),
+                        width: 0.5,
+                        style: BorderStyle.solid, // solid, none
+                      ),
+                    ),
+                  ),
                 ),
-                child: const Text("저장하기",
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
-              )
-            ],
+
+                // 5. Lock 상태 체크박스 추가
+
+                ListTile(
+                  title: const Text("항목 잠금 (Lock)"),
+                  subtitle: const Text("잠구기"),
+                  trailing: SlidingToggle(
+                    value: _isLocked,
+                    onChanged: (bool value) {
+                      setState(() => _isLocked = value);
+                    },
+                    beginColor: AppColors.white,
+                    endColor: AppColors.carrot,
+                  ),
+                ),
+                SizedBox(height: 10,),
+                ElevatedButton(
+                  onPressed: _onSave,
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                    backgroundColor: AppColors.carrot,
+                  ),
+                  child: const Text("저장하기",
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+                )
+              ],
+            ),
           ),
         ),
       ),

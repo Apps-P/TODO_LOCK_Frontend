@@ -189,7 +189,7 @@ class _LockOverlayViewState extends State<LockOverlayView> {
 
     await FlutterOverlayWindow.updateFlag(OverlayFlag.clickThrough);
 
-    Future.delayed(const Duration(seconds: 10), () async {
+    Future.delayed(const Duration(seconds: 100), () async {
       if (!mounted) return;
 
       await FlutterOverlayWindow.updateFlag(OverlayFlag.defaultFlag);

@@ -69,12 +69,15 @@ class LockUI extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     alignment: Alignment.center,
-                    child: Text(
-                      formatDuration(remainingTime),
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 50,
-                        fontWeight: FontWeight.bold,
+                    child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                        formatDuration(remainingTime),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 50,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -167,14 +170,16 @@ class LockUI extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               alignment: Alignment.center,
-                              child: Text(
-                                "잠시해제\n    $tempPressCount/3",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w400,
-                                  color: isTempDisabled
-                                      ? Colors.white
-                                      : Colors.black87,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  "잠시해제\n$tempPressCount/3",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w400,
+                                    color: isTempDisabled ? Colors.white : Colors.black87,
+                                  ),
                                 ),
                               ),
                             ),
