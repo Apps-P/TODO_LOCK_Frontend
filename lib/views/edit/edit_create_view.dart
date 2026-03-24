@@ -122,7 +122,40 @@ class _TodoEditCreatePageState extends State<TodoEditCreatePage> {
           child: Container(
             padding: EdgeInsets.fromLTRB(0, 40, 0, 0),
             child: Column(
+
               children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 80,
+                      child: Center(
+                        child: Text(
+                          "HH",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black45,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 24), // " : " 텍스트 너비만큼 간격
+                    SizedBox(
+                      width: 80,
+                      child: Center(
+                        child: Text(
+                          "MM",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black45,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
