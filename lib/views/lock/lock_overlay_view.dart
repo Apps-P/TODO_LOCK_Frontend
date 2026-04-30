@@ -41,10 +41,14 @@ class _LockOverlayViewState extends State<LockOverlayView> {
 
   int _tempPressCount = 0;
 
+  /// temp 모드 남은 초. -1이면 비활성 상태.
+  int _tempRemainingSeconds = -1;
+
+  static const int _tempDurationSeconds = 100;
+
   @override
   void initState() {
     super.initState();
-
     _calculateRemaining();
     _startCountdown();
   }
@@ -60,18 +64,32 @@ class _LockOverlayViewState extends State<LockOverlayView> {
       _tickTimer?.cancel();
       _calculateRemaining();
       log("New _remainingTime: $_remainingTime");
+
+      // temp 모드 상태 초기화: 이전 todo의 상태가 다음 todo에 이어지지 않도록
+      _mode = OverlayMode.lock;
+      _tempRemainingSeconds = -1;
+      _tempPressCount = 0;
+
       _startCountdown();
     }
   }
 
-
-
-  /// start Timer and finished overlay when remain time smaller than zero.
+  /// 메인 tick: todo 카운트다운 + temp 모드 카운트다운을 하나의 Timer로 처리.
   void _startCountdown() {
     _tickTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      // ── 1) todo 잔여 시간 갱신 ──
       _calculateRemaining();
 
+      // ── 2) temp 모드 카운트다운 (todo 완료 판정과 독립적으로 실행) ──
+      if (_mode == OverlayMode.temp && _tempRemainingSeconds > 0) {
+        _tempRemainingSeconds--;
 
+        if (_tempRemainingSeconds <= 0) {
+          _exitTempMode(); // async fire-and-forget: overlay flag 원복
+        }
+      }
+
+      // ── 3) todo 완료 판정 (temp 모드 중에도 항상 실행) ──
       if (_remainingTime.inSeconds <= 0) {
         _onFinished();
       } else {
@@ -84,6 +102,17 @@ class _LockOverlayViewState extends State<LockOverlayView> {
     });
   }
 
+  /// temp 모드 종료 → lock 모드로 복귀 + overlay flag 원복.
+  Future<void> _exitTempMode() async {
+    if (!mounted) return;
+
+    setState(() {
+      _mode = OverlayMode.lock;
+      _tempRemainingSeconds = -1;
+    });
+
+    await FlutterOverlayWindow.updateFlag(OverlayFlag.defaultFlag);
+  }
 
   /// Get remaining time from checkTime and now().
   void _calculateRemaining() {
@@ -140,7 +169,6 @@ class _LockOverlayViewState extends State<LockOverlayView> {
         // 값 변경
         targetTodo.done = isSuccess;
 
-
         // 저장 및 디스크 동기화
         await targetTodo.save();
         await todoBox.flush(); // Write on disk directly
@@ -149,11 +177,11 @@ class _LockOverlayViewState extends State<LockOverlayView> {
       } else {
         log("Error: Could not find Todo with ID ${widget.id}");
       }
-
     } catch (e) {
       log("Critical Error in Overlay Hive Sync: $e");
     }
   }
+
   /// Show duration with format (hh:)mm:ss.
   String _formatDuration(Duration duration) {
     int hours = duration.inHours;
@@ -172,9 +200,6 @@ class _LockOverlayViewState extends State<LockOverlayView> {
     super.dispose();
   }
 
-
-
-
   /// Handler for [temp] mode and [lock] mode switch.
   Future<void> _handleTempMode() async {
     if (_mode == OverlayMode.temp) return;
@@ -185,28 +210,15 @@ class _LockOverlayViewState extends State<LockOverlayView> {
     setState(() {
       _tempPressCount++;
       _mode = OverlayMode.temp;
+      _tempRemainingSeconds = _tempDurationSeconds; // 카운트다운 시작
     });
 
     await FlutterOverlayWindow.updateFlag(OverlayFlag.clickThrough);
-
-    Future.delayed(const Duration(seconds: 100), () async {
-      if (!mounted) return;
-
-      await FlutterOverlayWindow.updateFlag(OverlayFlag.defaultFlag);
-
-      setState(() {
-        _mode = OverlayMode.lock;
-      });
-    });
   }
-
-
 
   /// Build overlay by mode type.
   @override
   Widget build(BuildContext context) {
-
-
     return Material(
       color: Colors.transparent,
       textStyle: const TextStyle(fontFamily: 'Paperlogy'),
@@ -214,6 +226,7 @@ class _LockOverlayViewState extends State<LockOverlayView> {
           ? TempUI(
         remainingTime: _remainingTime,
         formatDuration: _formatDuration,
+        tempRemainingSeconds: _tempRemainingSeconds,
       )
           : LockUI(
         remainingTime: _remainingTime,

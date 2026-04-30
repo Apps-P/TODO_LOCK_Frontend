@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:todo_and_lock/views/main/todo/view.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:todo_and_lock/views/setting/auth_page.dart';
+import 'banner.dart';
 
 final _supabase = Supabase.instance.client;
 
@@ -41,6 +42,8 @@ class _MainViewState extends State<MainView> {
     return Scaffold(
       appBar: CustomAppBar(selectedDate: widget.selectedDate),
       body: TodoListView(selectedDate: widget.selectedDate),
+      //ad banner.
+      bottomNavigationBar: const BannerAdWidget(),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.pushNamed(context, '/create');

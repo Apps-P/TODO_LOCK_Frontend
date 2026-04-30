@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 class TempUI extends StatelessWidget {
   final Duration remainingTime;
   final String Function(Duration) formatDuration;
+  final int tempRemainingSeconds;
 
   const TempUI({
     super.key,
     required this.remainingTime,
     required this.formatDuration,
+    required this.tempRemainingSeconds,
   });
 
   @override
@@ -36,13 +38,26 @@ class TempUI extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               alignment: Alignment.center,
-              child: Text(
-                formatDuration(remainingTime),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '$tempRemainingSeconds',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  Text(
+                    formatDuration(remainingTime),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
