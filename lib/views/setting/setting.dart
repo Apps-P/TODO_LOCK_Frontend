@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:todo_and_lock/views/main/main_view.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:todo_and_lock/theme/sliding_toggle.dart';
 import 'package:todo_and_lock/theme/app_colors.dart';
@@ -10,7 +11,8 @@ class SettingsPage extends StatefulWidget {
   State<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver {
+class _SettingsPageState extends State<SettingsPage>
+    with WidgetsBindingObserver {
   bool _isOverlayGranted = false;
 
   @override
@@ -82,6 +84,32 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
             value: _isOverlayGranted,
             onChanged: _handleToggle,
           ),
+          const SizedBox(height: 16),
+          Card(
+            color: Colors.white,
+            elevation: 0,
+            margin: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 8,
+              ),
+              leading: const Icon(Icons.help_outline, color: AppColors.carrot),
+              title: const Text('사용 가이드'),
+              subtitle: const Text('할 일 추가와 잠금 화면 사용법 다시 보기'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push<void>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      MainView(selectedDate: DateTime.now(), replayGuide: true),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -107,7 +135,10 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
               children: [
                 Text(
                   title,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(

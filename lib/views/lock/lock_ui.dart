@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 class LockUI extends StatelessWidget {
@@ -6,9 +7,12 @@ class LockUI extends StatelessWidget {
   final Duration duration;
   final String Function(Duration) formatDuration;
   final VoidCallback onTempMode;
-  final void Function() onGiveUp;
+  final VoidCallback onGiveUp;
   final int tempPressCount;
   final bool isPaying;
+  final GlobalKey? timerKey;
+  final GlobalKey? temporaryButtonKey;
+  final GlobalKey? giveUpButtonKey;
 
   const LockUI({
     super.key,
@@ -20,48 +24,52 @@ class LockUI extends StatelessWidget {
     required this.onGiveUp,
     required this.tempPressCount,
     this.isPaying = false,
+    this.timerKey,
+    this.temporaryButtonKey,
+    this.giveUpButtonKey,
   });
 
   @override
   Widget build(BuildContext context) {
-    var par_h = MediaQuery.of(context).size.height;
-    var par_w = MediaQuery.of(context).size.width;
-
-    final bool isTempDisabled = tempPressCount >= 3 || isPaying;
-
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12.0),
-        height: par_h,
-        width: double.infinity,
-        decoration: BoxDecoration(color: Color(0xFFF2F0EF)),
-        child: Stack(
-          children: [
-            SizedBox(
-              height: par_h,
+    final isTempDisabled = tempPressCount >= 3 || isPaying;
+    return ColoredBox(
+      color: const Color(0xFFF2F0EF),
+      child: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final height = constraints.maxHeight;
+            final width = constraints.maxWidth;
+            // Natural heights and scrolling keep the same design usable on
+            // compact displays and with larger accessibility text settings.
+            return SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                width * 0.125,
+                height * 0.07,
+                width * 0.125,
+                24,
+              ),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  SizedBox(height: par_h * 0.1),
-
-                  Text(
-                    "앞으로 남은 시간...",
+                  const Text(
+                    '앞으로 남은 시간...',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
                       color: Colors.black,
                     ),
                   ),
-
-                  SizedBox(height: par_h * 0.04),
-
-                  // 타이머 디스플레이
+                  SizedBox(height: height * 0.03),
                   Container(
-                    height: par_h * 0.15,
-                    padding: EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-                    margin: EdgeInsets.symmetric(horizontal: par_w * 0.125),
+                    key: timerKey,
+                    height: math.max(88, height * 0.15),
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 20,
+                      horizontal: 24,
+                    ),
                     decoration: BoxDecoration(
-                      color: Color(0xFFF25843),
+                      color: const Color(0xFFF25843),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     alignment: Alignment.center,
@@ -69,7 +77,7 @@ class LockUI extends StatelessWidget {
                       fit: BoxFit.scaleDown,
                       child: Text(
                         formatDuration(remainingTime),
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 50,
                           fontWeight: FontWeight.bold,
@@ -77,51 +85,46 @@ class LockUI extends StatelessWidget {
                       ),
                     ),
                   ),
-
-                  SizedBox(height: par_h * 0.05),
-
-                  // Todo 내용
+                  SizedBox(height: height * 0.03),
                   Container(
+                    height: math.max(88, height * 0.14),
                     width: double.infinity,
-                    height: par_h * 0.14,
-                    padding: EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-                    margin: EdgeInsets.symmetric(
-                      horizontal: par_w * 0.125,
-                      vertical: 10,
-                    ),
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     alignment: Alignment.center,
                     child: SingleChildScrollView(
-                      scrollDirection: Axis.vertical,
                       child: Text(
-                        "+${formatDuration(duration)}  $contents",
-                        style: TextStyle(fontSize: 20, color: Colors.black87),
+                        '+${formatDuration(duration)}  $contents',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          color: Colors.black87,
+                        ),
                       ),
                     ),
                   ),
-
-                  // Tip 컨테이너
+                  const SizedBox(height: 16),
                   Container(
                     width: double.infinity,
-                    height: par_h * 0.22,
-                    padding: EdgeInsets.symmetric(vertical: 24, horizontal: 12),
-                    margin: EdgeInsets.symmetric(
-                      horizontal: par_w * 0.125,
-                      vertical: 12,
+                    constraints: BoxConstraints(
+                      minHeight: math.max(128, height * 0.18),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 24,
+                      horizontal: 12,
                     ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    alignment: Alignment.center,
-                    child: Column(
+                    child: const Column(
+                      mainAxisSize: MainAxisSize.min,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          "Tip",
+                          'Tip',
                           style: TextStyle(
                             fontSize: 18,
                             color: Color(0xFFF25843),
@@ -130,89 +133,83 @@ class LockUI extends StatelessWidget {
                         ),
                         SizedBox(height: 8),
                         Text(
-                          "정말 급한 일이 있을 때는 \n 잠시 해제 버튼을 눌러보세요",
+                          '정말 급한 일이 있을 때는\n잠시 해제 버튼을 눌러보세요',
                           textAlign: TextAlign.center,
                           style: TextStyle(fontSize: 16, color: Colors.black87),
                         ),
                       ],
                     ),
                   ),
-
-                  // 버튼들
-                  Container(
-                    margin: EdgeInsets.symmetric(
-                      horizontal: par_w * 0.125,
-                      vertical: 10,
-                    ),
-                    height: par_h * 0.08,
+                  const SizedBox(height: 16),
+                  IntrinsicHeight(
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // 잠시해제 버튼
                         Expanded(
-                          child: GestureDetector(
+                          child: _button(
+                            key: temporaryButtonKey,
+                            label: '잠시해제\n$tempPressCount/3',
+                            color: isTempDisabled
+                                ? Colors.black26
+                                : Colors.white,
+                            textColor: isTempDisabled
+                                ? Colors.white
+                                : Colors.black87,
                             onTap: isTempDisabled ? null : onTempMode,
-                            child: Container(
-                              padding: EdgeInsets.symmetric(vertical: 14),
-                              decoration: BoxDecoration(
-                                color: isTempDisabled
-                                    ? Colors.black26
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              alignment: Alignment.center,
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  "잠시해제\n$tempPressCount/3",
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w400,
-                                    color: isTempDisabled
-                                        ? Colors.white
-                                        : Colors.black87,
-                                  ),
-                                ),
-                              ),
-                            ),
                           ),
                         ),
-
-                        SizedBox(width: 16),
-
-                        // 포기하기 버튼
+                        const SizedBox(width: 16),
                         Expanded(
-                          child: GestureDetector(
+                          child: _button(
+                            key: giveUpButtonKey,
+                            label: isPaying ? '결제 확인 중…' : '포기하기 (결제)',
+                            color: const Color(0xFFF25843),
+                            textColor: Colors.white,
                             onTap: isPaying ? null : onGiveUp,
-                            child: Container(
-                              padding: EdgeInsets.symmetric(vertical: 14),
-                              decoration: BoxDecoration(
-                                color: Color(0xFFF25843),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                isPaying ? "결제 확인 중…" : "포기하기 (결제)",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w400,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-
-                  Spacer(),
                 ],
               ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );
   }
+
+  Widget _button({
+    required Key? key,
+    required String label,
+    required Color color,
+    required Color textColor,
+    required VoidCallback? onTap,
+  }) => Semantics(
+    button: true,
+    enabled: onTap != null,
+    child: GestureDetector(
+      key: key,
+      onTap: onTap,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 64),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w400,
+            color: textColor,
+          ),
+        ),
+      ),
+    ),
+  );
 }

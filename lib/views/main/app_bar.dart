@@ -3,14 +3,19 @@ import 'package:intl/intl.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final DateTime selectedDate;
+  final GlobalKey? titleKey;
 
-  const CustomAppBar({super.key, required this.selectedDate});
+  const CustomAppBar({super.key, required this.selectedDate, this.titleKey});
 
   String _resolveTitle() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final tomorrow = today.add(const Duration(days: 1));
-    final current = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+    final current = DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+    );
 
     if (current == today) return '오늘은...';
     if (current == tomorrow) return '내일은...';
@@ -21,10 +26,14 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final current = DateTime(selectedDate.year, selectedDate.month, selectedDate.day); // 추가
+    final current = DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+    ); // 추가
 
     return AppBar(
-      title: Text(_resolveTitle()),
+      title: Text(_resolveTitle(), key: titleKey),
       centerTitle: true,
       leading: IconButton(
         icon: const Icon(Icons.menu),
@@ -32,9 +41,12 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       actions: [
         IconButton(
-          icon: Icon(current == today          // 아이콘 분기
-              ? Icons.toggle_on_outlined
-              : Icons.toggle_off_outlined),
+          icon: Icon(
+            current ==
+                    today // 아이콘 분기
+                ? Icons.toggle_on_outlined
+                : Icons.toggle_off_outlined,
+          ),
           onPressed: () {
             final target = current == today
                 ? today.add(const Duration(days: 1))

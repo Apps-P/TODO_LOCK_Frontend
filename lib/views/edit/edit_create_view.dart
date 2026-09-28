@@ -1,15 +1,27 @@
-import 'dart:developer';
+import 'package:todo_and_lock/views/guide/guide_spotlight.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:todo_and_lock/models/todo_model.dart';
 import 'package:todo_and_lock/theme/app_colors.dart';
 import 'package:todo_and_lock/theme/sliding_toggle.dart';
 
+class TodoCreationResult {
+  final Todo? todo;
+  final bool guideSkipped;
+  const TodoCreationResult({this.todo, this.guideSkipped = false});
+}
+
 class TodoEditCreatePage extends StatefulWidget {
   final Todo? todo; // null이면 Create, 아니면 Edit
   final DateTime initialDate;
+  final bool guideMode;
 
-  const TodoEditCreatePage({super.key, this.todo, required this.initialDate});
+  const TodoEditCreatePage({
+    super.key,
+    this.todo,
+    required this.initialDate,
+    this.guideMode = false,
+  }) : assert(!guideMode || todo == null);
 
   @override
   State<TodoEditCreatePage> createState() => _TodoEditCreatePageState();
@@ -17,6 +29,15 @@ class TodoEditCreatePage extends StatefulWidget {
 
 class _TodoEditCreatePageState extends State<TodoEditCreatePage> {
   final _contentController = TextEditingController();
+  final _contentKey = GlobalKey();
+  final _lockKey = GlobalKey();
+  final _saveKey = GlobalKey();
+  final _scrollController = ScrollController();
+  late FixedExtentScrollController _hoursController;
+  late FixedExtentScrollController _minutesController;
+  int _guideStep = 0;
+  bool _saving = false;
+  bool _guideError = false;
   late DateTime _selectedDate;
   late int _selectedMinutes;
   late int _selectedHours;
@@ -33,6 +54,46 @@ class _TodoEditCreatePageState extends State<TodoEditCreatePage> {
         widget.todo?.duration.inMinutes.remainder(60) ?? 10; // 기본 10분
     _selectedHours = widget.todo?.duration.inHours ?? 0;
     _isLocked = widget.todo?.lock ?? false;
+    _hoursController = FixedExtentScrollController(initialItem: _selectedHours);
+    _minutesController = FixedExtentScrollController(
+      initialItem: _selectedMinutes,
+    );
+    if (widget.guideMode) _showGuideTarget();
+  }
+
+  GlobalKey get _guideTarget => switch (_guideStep) {
+    0 => _contentKey,
+    1 => _lockKey,
+    _ => _saveKey,
+  };
+
+  void _showGuideTarget() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final target = _guideTarget.currentContext;
+      if (target != null) Scrollable.ensureVisible(target, alignment: 0.45);
+    });
+  }
+
+  void _setGuideStep(int step) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      _guideStep = step;
+      _guideError = false;
+    });
+    _showGuideTarget();
+  }
+
+  void _nextGuideStep() {
+    if (_guideStep == 0 && _contentController.text.trim().isEmpty) {
+      setState(() => _guideError = true);
+      return;
+    }
+    if (_guideStep < 2) {
+      _setGuideStep(_guideStep + 1);
+    } else {
+      _onSave();
+    }
   }
 
   /// 날짜가 변경되었을 때 이전 날짜의 no를 재정렬하는 함수
@@ -60,6 +121,7 @@ class _TodoEditCreatePageState extends State<TodoEditCreatePage> {
 
   // 저장
   void _onSave() async {
+    if (_saving) return;
     if (_contentController.text.trim().isEmpty ||
         (_selectedHours == 0 && _selectedMinutes == 0)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -68,73 +130,77 @@ class _TodoEditCreatePageState extends State<TodoEditCreatePage> {
       return;
     }
 
-    if (widget.todo == null) {
-      // [CREATE]
-      final newTodo =
-          Todo(
-              content: _contentController.text.trim(),
-              lock: _isLocked, // 3. 설정된 Lock 값 반영
-              duration: Duration(
-                minutes: _selectedMinutes,
-                hours: _selectedHours,
-              ),
-            )
-            ..date = _selectedDate
-            ..user_id = "local"
-            ..no = _getNextNo(_selectedDate);
+    setState(() => _saving = true);
+    Todo? savedTodo;
+    try {
+      if (widget.todo == null) {
+        // [CREATE]
+        final newTodo =
+            Todo(
+                content: _contentController.text.trim(),
+                lock: widget.guideMode ? false : _isLocked,
+                duration: Duration(
+                  minutes: _selectedMinutes,
+                  hours: _selectedHours,
+                ),
+              )
+              ..date = _selectedDate
+              ..user_id = "local"
+              ..no = _getNextNo(_selectedDate);
 
-      await _todoBox.add(newTodo);
-    } else {
-      // [EDIT]
-      final todo = widget.todo!;
-      final oldDate = todo.date;
-
-      todo.content = _contentController.text.trim();
-      todo.duration = Duration(
-        minutes: _selectedMinutes,
-        hours: _selectedHours,
-      );
-      todo.lock = _isLocked; // 4. 수정된 Lock 값 반영
-
-      if (!isSameDay(oldDate, _selectedDate)) {
-        todo.date = _selectedDate;
-        todo.no = _getNextNo(_selectedDate);
-        await todo.save();
-        _reorderOldDate(oldDate);
+        await _todoBox.add(newTodo);
+        savedTodo = newTodo;
       } else {
-        await todo.save();
-      }
-    }
+        // [EDIT]
+        final todo = widget.todo!;
+        savedTodo = todo;
+        final oldDate = todo.date;
 
-    log("========= Hive Todo List Check =========");
-    log("Total count: ${_todoBox.length}");
-
-    for (int i = 0; i < _todoBox.length; i++) {
-      final todo = _todoBox.getAt(i);
-      if (todo != null) {
-        // todo.id가 UUID 등으로 정의되어 있다면 출력됩니다.
-        log(
-          "Index[$i] | Hive Key: ${_todoBox.keyAt(i)} | Todo ID: ${todo.id} | Content: ${todo.content}",
+        todo.content = _contentController.text.trim();
+        todo.duration = Duration(
+          minutes: _selectedMinutes,
+          hours: _selectedHours,
         );
+        todo.lock = _isLocked; // 4. 수정된 Lock 값 반영
+
+        if (!isSameDay(oldDate, _selectedDate)) {
+          todo.date = _selectedDate;
+          todo.no = _getNextNo(_selectedDate);
+          await todo.save();
+          _reorderOldDate(oldDate);
+        } else {
+          await todo.save();
+        }
+      }
+
+      if (mounted) Navigator.pop(context, TodoCreationResult(todo: savedTodo));
+    } catch (_) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('저장하지 못했습니다. 다시 시도해주세요.')));
       }
     }
-    log("========================================");
-    if (mounted) Navigator.pop(context);
   }
 
   @override
   void dispose() {
     _contentController.dispose();
+    _scrollController.dispose();
+    _hoursController.dispose();
+    _minutesController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final screen = Scaffold(
       appBar: AppBar(title: Text(widget.todo == null ? "Todo 생성" : "Todo 수정")),
       body: Padding(
         padding: const EdgeInsets.all(10.0),
         child: SingleChildScrollView(
+          controller: _scrollController,
           child: Container(
             padding: EdgeInsets.fromLTRB(0, 40, 0, 0),
             child: Column(
@@ -180,9 +246,7 @@ class _TodoEditCreatePageState extends State<TodoEditCreatePage> {
                       height: 150,
                       child: // 시간 picker
                       ListWheelScrollView(
-                        controller: FixedExtentScrollController(
-                          initialItem: _selectedHours,
-                        ),
+                        controller: _hoursController,
                         itemExtent: 52,
                         perspective: 0.0001,
                         diameterRatio: 100,
@@ -218,9 +282,7 @@ class _TodoEditCreatePageState extends State<TodoEditCreatePage> {
                       width: 80,
                       height: 150,
                       child: ListWheelScrollView(
-                        controller: FixedExtentScrollController(
-                          initialItem: _selectedMinutes,
-                        ),
+                        controller: _minutesController,
                         itemExtent: 52,
                         perspective: 0.0001,
                         diameterRatio: 100,
@@ -262,6 +324,10 @@ class _TodoEditCreatePageState extends State<TodoEditCreatePage> {
                       ),
 
                       TextField(
+                        key: _contentKey,
+                        onSubmitted: widget.guideMode
+                            ? (_) => _nextGuideStep()
+                            : null,
                         // 👈 Expanded 제거
                         controller: _contentController,
                         decoration: const InputDecoration(
@@ -326,12 +392,15 @@ class _TodoEditCreatePageState extends State<TodoEditCreatePage> {
 
                 // 5. Lock 상태 체크박스 추가
                 ListTile(
+                  key: _lockKey,
                   title: const Text("항목 잠금 (Lock)"),
-                  subtitle: const Text("잠구기"),
+                  subtitle: Text(
+                    widget.guideMode ? '가이드에서는 잠금 없이 추가해요' : '잠구기',
+                  ),
                   trailing: SlidingToggle(
                     value: _isLocked,
                     onChanged: (bool value) {
-                      setState(() => _isLocked = value);
+                      if (!widget.guideMode) setState(() => _isLocked = value);
                     },
                     beginColor: AppColors.white,
                     endColor: AppColors.carrot,
@@ -339,7 +408,8 @@ class _TodoEditCreatePageState extends State<TodoEditCreatePage> {
                 ),
                 SizedBox(height: 10),
                 ElevatedButton(
-                  onPressed: _onSave,
+                  key: _saveKey,
+                  onPressed: _saving ? null : _onSave,
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 50),
                     backgroundColor: AppColors.carrot,
@@ -357,6 +427,37 @@ class _TodoEditCreatePageState extends State<TodoEditCreatePage> {
           ),
         ),
       ),
+    );
+    if (!widget.guideMode) return screen;
+    return GuideSpotlight(
+      targetKey: _guideTarget,
+      step: 3,
+      title: switch (_guideStep) {
+        0 => '첫 할 일을 적어보세요',
+        1 => '잠금은 꺼둔 채로',
+        _ => '이제 저장해볼까요?',
+      },
+      description: switch (_guideStep) {
+        0 =>
+          _guideError
+              ? '아래 칸에 할 일을 입력한 뒤 다음을 눌러주세요.'
+              : '예: 책 10분 읽기\n직접 입력한 할 일이 목록에 저장돼요. 시간은 기본 10분으로 시작해요.',
+        1 =>
+          '항목 잠금이 꺼져 있어요. 이번 할 일은 화면을 잠그지 않아요.\n나중에 할 일을 수정하면서 시간과 잠금을 바꿀 수 있어요.',
+        _ => '저장하기를 눌러 할 일을 추가하세요.\n저장 후에는 잠금 화면의 디자인과 버튼을 미리 살펴볼게요.',
+      },
+      nextLabel: _guideStep == 2 ? '저장하고 계속' : '다음',
+      onNext: _nextGuideStep,
+      onBack: _guideStep > 0
+          ? () => _setGuideStep(_guideStep - 1)
+          : () => Navigator.pop(context),
+      onSkip: () {
+        if (!_saving) {
+          Navigator.pop(context, const TodoCreationResult(guideSkipped: true));
+        }
+      },
+      interactive: _guideStep != 1,
+      child: screen,
     );
   }
 }
