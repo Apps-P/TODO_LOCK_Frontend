@@ -1,4 +1,4 @@
-package com.example.todo_and_lock
+package com.appsnp.todonlock
 
 import io.flutter.embedding.android.FlutterActivity
 

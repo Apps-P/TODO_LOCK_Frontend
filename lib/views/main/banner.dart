@@ -24,7 +24,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
   void _loadAd() {
     _bannerAd = BannerAd(
       adUnitId: _adUnitId,
-      size: AdSize.banner,         // 320x50 표준 배너
+      size: AdSize.banner, // 320x50 표준 배너
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (ad) {
@@ -48,10 +48,16 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
   Widget build(BuildContext context) {
     if (!_isLoaded || _bannerAd == null) return const SizedBox.shrink();
 
-    return SizedBox(
-      width: _bannerAd!.size.width.toDouble(),
-      height: _bannerAd!.size.height.toDouble(),
-      child: AdWidget(ad: _bannerAd!),
+    return SafeArea(
+      top: false,
+      child: Center(
+        heightFactor: 1,
+        child: SizedBox(
+          width: _bannerAd!.size.width.toDouble(),
+          height: _bannerAd!.size.height.toDouble(),
+          child: AdWidget(ad: _bannerAd!),
+        ),
+      ),
     );
   }
 }

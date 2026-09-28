@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:developer';
 
 class LockUI extends StatelessWidget {
   final Duration remainingTime;
@@ -9,6 +8,7 @@ class LockUI extends StatelessWidget {
   final VoidCallback onTempMode;
   final void Function() onGiveUp;
   final int tempPressCount;
+  final bool isPaying;
 
   const LockUI({
     super.key,
@@ -19,6 +19,7 @@ class LockUI extends StatelessWidget {
     required this.onTempMode,
     required this.onGiveUp,
     required this.tempPressCount,
+    this.isPaying = false,
   });
 
   @override
@@ -26,16 +27,14 @@ class LockUI extends StatelessWidget {
     var par_h = MediaQuery.of(context).size.height;
     var par_w = MediaQuery.of(context).size.width;
 
-    final bool isTempDisabled = tempPressCount >= 3;
+    final bool isTempDisabled = tempPressCount >= 3 || isPaying;
 
     return Center(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12.0),
         height: par_h,
         width: double.infinity,
-        decoration: BoxDecoration(
-          color: Color(0xFFF2F0EF),
-        ),
+        decoration: BoxDecoration(color: Color(0xFFF2F0EF)),
         child: Stack(
           children: [
             SizedBox(
@@ -59,10 +58,7 @@ class LockUI extends StatelessWidget {
                   // 타이머 디스플레이
                   Container(
                     height: par_h * 0.15,
-                    padding: EdgeInsets.symmetric(
-                      vertical: 20,
-                      horizontal: 24,
-                    ),
+                    padding: EdgeInsets.symmetric(vertical: 20, horizontal: 24),
                     margin: EdgeInsets.symmetric(horizontal: par_w * 0.125),
                     decoration: BoxDecoration(
                       color: Color(0xFFF25843),
@@ -70,8 +66,8 @@ class LockUI extends StatelessWidget {
                     ),
                     alignment: Alignment.center,
                     child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
                         formatDuration(remainingTime),
                         style: TextStyle(
                           color: Colors.white,
@@ -111,10 +107,7 @@ class LockUI extends StatelessWidget {
                   Container(
                     width: double.infinity,
                     height: par_h * 0.22,
-                    padding: EdgeInsets.symmetric(
-                      vertical: 24,
-                      horizontal: 12,
-                    ),
+                    padding: EdgeInsets.symmetric(vertical: 24, horizontal: 12),
                     margin: EdgeInsets.symmetric(
                       horizontal: par_w * 0.125,
                       vertical: 12,
@@ -139,10 +132,7 @@ class LockUI extends StatelessWidget {
                         Text(
                           "정말 급한 일이 있을 때는 \n 잠시 해제 버튼을 눌러보세요",
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.black87,
-                          ),
+                          style: TextStyle(fontSize: 16, color: Colors.black87),
                         ),
                       ],
                     ),
@@ -178,7 +168,9 @@ class LockUI extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w400,
-                                    color: isTempDisabled ? Colors.white : Colors.black87,
+                                    color: isTempDisabled
+                                        ? Colors.white
+                                        : Colors.black87,
                                   ),
                                 ),
                               ),
@@ -191,10 +183,7 @@ class LockUI extends StatelessWidget {
                         // 포기하기 버튼
                         Expanded(
                           child: GestureDetector(
-                            onTap: () async {
-                              log("pressed give up");
-                              onGiveUp();
-                            },
+                            onTap: isPaying ? null : onGiveUp,
                             child: Container(
                               padding: EdgeInsets.symmetric(vertical: 14),
                               decoration: BoxDecoration(
@@ -203,7 +192,7 @@ class LockUI extends StatelessWidget {
                               ),
                               alignment: Alignment.center,
                               child: Text(
-                                "포기하기",
+                                isPaying ? "결제 확인 중…" : "포기하기 (결제)",
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w400,
