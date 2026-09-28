@@ -1,242 +1,191 @@
-import 'dart:developer';
 import 'dart:async';
-
-import 'package:hive_flutter/hive_flutter.dart';
-import 'package:todo_and_lock/models/todo_model.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
+import 'package:todo_and_lock/services/lock_bridge.dart';
 import 'lock_ui.dart';
 import 'temp_ui.dart';
 
-enum OverlayMode { lock, temp }
-
-/// ====================================================
-/// What: class for Lock overlay view
-/// How: get id and sync "todo" object.
-///      and make timer which work identically
-///      with main app (todo/view.dart).
-/// ====================================================
 class LockOverlayView extends StatefulWidget {
   final String id;
+  final String session;
   final String contents;
-  final DateTime? checkTime;
+  final DateTime checkTime;
   final Duration duration;
-
   const LockOverlayView({
     super.key,
     required this.id,
+    required this.session,
     required this.contents,
-    required this.duration,
     required this.checkTime,
+    required this.duration,
   });
-
   @override
   State<LockOverlayView> createState() => _LockOverlayViewState();
 }
 
 class _LockOverlayViewState extends State<LockOverlayView> {
-  OverlayMode _mode = OverlayMode.lock;
-  Timer? _tickTimer;
-  late Duration _remainingTime;
+  Timer? _timer;
+  DateTime? _breakUntil;
+  int _breakCount = 0;
+  bool _paying = false;
+  bool _finishing = false;
+  String? _message;
+  Duration get remaining {
+    final value = widget.checkTime
+        .add(widget.duration)
+        .difference(DateTime.now());
+    return value.isNegative ? Duration.zero : value;
+  }
 
-  int _tempPressCount = 0;
-
-  /// temp 모드 남은 초. -1이면 비활성 상태.
-  int _tempRemainingSeconds = -1;
-
-  static const int _tempDurationSeconds = 100;
+  int get breakSeconds => _breakUntil == null
+      ? 0
+      : ((_breakUntil!.difference(DateTime.now()).inMilliseconds / 1000).ceil())
+            .clamp(0, 120);
 
   @override
   void initState() {
     super.initState();
-    _calculateRemaining();
-    _startCountdown();
+    _restoreBreak();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
   }
 
-  @override
-  void didUpdateWidget(LockOverlayView oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    log("=== LockOverlayView didUpdateWidget ===");
-    log("Old id: ${oldWidget.id}, New id: ${widget.id}");
-
-    if (oldWidget.id != widget.id) {
-      log("ID changed! Restarting timer...");
-      _tickTimer?.cancel();
-      _calculateRemaining();
-      log("New _remainingTime: $_remainingTime");
-
-      // temp 모드 상태 초기화: 이전 todo의 상태가 다음 todo에 이어지지 않도록
-      _mode = OverlayMode.lock;
-      _tempRemainingSeconds = -1;
-      _tempPressCount = 0;
-
-      _startCountdown();
+  Future<void> _restoreBreak() async {
+    final data = await LockBridge.current();
+    if (!mounted || data?['session'] != widget.session) return;
+    _breakCount = (data?['breakCount'] as int?) ?? 0;
+    final until = (data?['breakUntil'] as int?) ?? 0;
+    if (until > DateTime.now().millisecondsSinceEpoch) {
+      _breakUntil = DateTime.fromMillisecondsSinceEpoch(until);
+      await FlutterOverlayWindow.updateFlag(OverlayFlag.clickThrough);
     }
+    if (mounted) setState(() {});
   }
 
-  /// 메인 tick: todo 카운트다운 + temp 모드 카운트다운을 하나의 Timer로 처리.
-  void _startCountdown() {
-    _tickTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      // ── 1) todo 잔여 시간 갱신 ──
-      _calculateRemaining();
-
-      // ── 2) temp 모드 카운트다운 (todo 완료 판정과 독립적으로 실행) ──
-      if (_mode == OverlayMode.temp && _tempRemainingSeconds > 0) {
-        _tempRemainingSeconds--;
-
-        if (_tempRemainingSeconds <= 0) {
-          _exitTempMode(); // async fire-and-forget: overlay flag 원복
-        }
+  Future<void> _tick() async {
+    if (_finishing) return;
+    if (remaining == Duration.zero) {
+      _finishing = true;
+      try {
+        await LockBridge.finish(widget.session);
+      } catch (_) {
+        // A failed durable write must keep the lock; retry on the next tick.
+        _finishing = false;
       }
-
-      // ── 3) todo 완료 판정 (temp 모드 중에도 항상 실행) ──
-      if (_remainingTime.inSeconds <= 0) {
-        _onFinished();
-      } else {
-        if (mounted) {
-          setState(() {});
-        } else {
-          log("Widget not mounted!");
-        }
+      return;
+    }
+    if (_breakUntil != null && breakSeconds == 0) {
+      try {
+        await FlutterOverlayWindow.updateFlag(OverlayFlag.defaultFlag);
+        _breakUntil = null;
+      } catch (_) {
+        return; // Retry restoring the touch-blocking flag on the next tick.
       }
-    });
+    }
+    if (mounted) setState(() {});
   }
 
-  /// temp 모드 종료 → lock 모드로 복귀 + overlay flag 원복.
-  Future<void> _exitTempMode() async {
-    if (!mounted) return;
-
+  Future<void> _giveUp() async {
+    if (_paying || _finishing) return;
     setState(() {
-      _mode = OverlayMode.lock;
-      _tempRemainingSeconds = -1;
+      _paying = true;
+      _message = null;
     });
-
-    await FlutterOverlayWindow.updateFlag(OverlayFlag.defaultFlag);
-  }
-
-  /// Get remaining time from checkTime and now().
-  void _calculateRemaining() {
-    if (widget.checkTime != null) {
-      final now = DateTime.now();
-      final elapsed = now.difference(widget.checkTime!);
-      final remaining = widget.duration - elapsed;
-      _remainingTime = remaining.isNegative ? Duration.zero : remaining;
-    } else {
-      _remainingTime = widget.duration;
-    }
-  }
-
-  Future<void> _closeOverlayWithSync() async {
-    _tickTimer?.cancel();
-    await FlutterOverlayWindow.closeOverlay();
-  }
-
-  // Close overlay when Succeed.
-  void _onFinished() async {
-    await _saveTodoCompletion(isSuccess: true);
-    await _closeOverlayWithSync();
-  }
-
-  // Close overlay when Give up.
-  void onGiveUp() async {
-    await _saveTodoCompletion(isSuccess: false);
-    await _closeOverlayWithSync();
-  }
-
-  /// Sync Hive. Search todo object from id.
-  Future<void> _saveTodoCompletion({required bool isSuccess}) async {
     try {
-      Box<Todo> todoBox;
-
-      // 🔥 핵심: Box를 닫고 다시 열어서 최신 상태 강제 로드
-      if (Hive.isBoxOpen('todos')) {
-        await Hive.box<Todo>('todos').close();
+      // Native code is the only authority that records a paid unlock. Never
+      // close the overlay or mutate a Todo merely because this Future resolves.
+      final status = await LockBridge.purchase(widget.session);
+      if (!mounted) return;
+      setState(() {
+        _message = switch (status) {
+          'purchased' => '결제가 확인되었습니다.',
+          'completed' => '집중 시간이 완료되었습니다.',
+          'pending' => '결제 승인 대기 중입니다. 확인될 때까지 잠금이 유지됩니다.',
+          'unavailable' => '결제 상품을 불러올 수 없습니다. 잠금이 유지됩니다.',
+          'credit' => '이전 결제가 확인되었습니다. 포기하기를 다시 누르면 사용할 수 있습니다.',
+          'canceled' => '결제가 취소되었거나 결제 화면을 벗어났습니다. 잠금을 유지합니다.',
+          _ => '결제를 확인하지 못했습니다. 잠금이 유지됩니다.',
+        };
+      });
+    } on PlatformException catch (error) {
+      if (mounted) {
+        setState(() => _message = error.message ?? '결제를 시작하지 못했습니다.');
       }
-
-      // 새로 열기 - 이때 디스크에서 최신 데이터 읽음
-      todoBox = await Hive.openBox<Todo>('todos');
-
-      // ID로 Todo 찾기
-      Todo? targetTodo;
-      for (var t in todoBox.values) {
-        if (t.id == widget.id) {
-          targetTodo = t;
-          break;
-        }
-      }
-
-      if (targetTodo != null) {
-        // 값 변경
-        targetTodo.done = isSuccess;
-
-        // 저장 및 디스크 동기화
-        await targetTodo.save();
-        await todoBox.flush(); // Write on disk directly
-
-        log("Todo Sync Success: ${isSuccess ? 'DONE' : 'GIVE UP'} (ID: ${widget.id})");
-      } else {
-        log("Error: Could not find Todo with ID ${widget.id}");
-      }
-    } catch (e) {
-      log("Critical Error in Overlay Hive Sync: $e");
+    } catch (_) {
+      if (mounted) setState(() => _message = '결제를 시작하지 못했습니다. 잠금은 유지됩니다.');
+    } finally {
+      if (mounted) setState(() => _paying = false);
     }
   }
 
-  /// Show duration with format (hh:)mm:ss.
-  String _formatDuration(Duration duration) {
-    int hours = duration.inHours;
-    int minutes = duration.inMinutes.remainder(60);
-    int seconds = duration.inSeconds.remainder(60);
-    if (hours > 0) {
-      return "${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}";
-    } else {
-      return "${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}";
+  Future<void> _temporaryUnlock() async {
+    if (_paying || _finishing || _breakCount >= 3 || breakSeconds > 0) return;
+    try {
+      final until = await LockBridge.channel.invokeMethod<int>('startBreak', {
+        'session': widget.session,
+      });
+      if (until == null || !mounted) return;
+      _breakCount++;
+      _breakUntil = DateTime.fromMillisecondsSinceEpoch(until);
+      await FlutterOverlayWindow.updateFlag(OverlayFlag.clickThrough);
+      if (mounted) setState(() {});
+    } catch (_) {
+      if (mounted) setState(() => _message = '잠시 해제를 시작하지 못했습니다.');
     }
+  }
+
+  String _format(Duration duration) {
+    String two(int v) => v.toString().padLeft(2, '0');
+    final text =
+        '${two(duration.inMinutes.remainder(60))}:${two(duration.inSeconds.remainder(60))}';
+    return duration.inHours > 0 ? '${two(duration.inHours)}:$text' : text;
   }
 
   @override
   void dispose() {
-    _tickTimer?.cancel();
+    _timer?.cancel();
     super.dispose();
   }
 
-  /// Handler for [temp] mode and [lock] mode switch.
-  Future<void> _handleTempMode() async {
-    if (_mode == OverlayMode.temp) return;
-
-    // 3번 초과 시 버튼 비활성화 처리 (LockUI에서 색상/동작 제어)
-    if (_tempPressCount >= 3) return;
-
-    setState(() {
-      _tempPressCount++;
-      _mode = OverlayMode.temp;
-      _tempRemainingSeconds = _tempDurationSeconds; // 카운트다운 시작
-    });
-
-    await FlutterOverlayWindow.updateFlag(OverlayFlag.clickThrough);
-  }
-
-  /// Build overlay by mode type.
   @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      textStyle: const TextStyle(fontFamily: 'Paperlogy'),
-      child: _mode == OverlayMode.temp
-          ? TempUI(
-        remainingTime: _remainingTime,
-        formatDuration: _formatDuration,
-        tempRemainingSeconds: _tempRemainingSeconds,
-      )
-          : LockUI(
-        remainingTime: _remainingTime,
-        contents: widget.contents,
-        duration: widget.duration,
-        formatDuration: _formatDuration,
-        onTempMode: _handleTempMode,
-        onGiveUp: onGiveUp,
-        tempPressCount: _tempPressCount,
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Material(
+    color: Colors.transparent,
+    child: breakSeconds > 0
+        ? TempUI(
+            remainingTime: remaining,
+            formatDuration: _format,
+            tempRemainingSeconds: breakSeconds,
+          )
+        : Stack(
+            children: [
+              LockUI(
+                remainingTime: remaining,
+                contents: widget.contents,
+                duration: widget.duration,
+                formatDuration: _format,
+                onTempMode: _temporaryUnlock,
+                onGiveUp: _giveUp,
+                tempPressCount: _breakCount,
+                isPaying: _paying,
+              ),
+              if (_message != null)
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: 8,
+                  child: SafeArea(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      color: Colors.black87,
+                      child: Text(
+                        _message!,
+                        style: const TextStyle(color: Colors.white),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+  );
 }

@@ -1,132 +1,105 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:todo_and_lock/models/todo_model.dart';
 import 'package:todo_and_lock/models/duration_adapter.dart';
 import 'package:todo_and_lock/theme/app_theme.dart';
 import 'package:todo_and_lock/views/lock/lock_overlay_view.dart';
 import 'package:todo_and_lock/views/edit/edit_create_view.dart';
 import 'package:todo_and_lock/views/main/main_view.dart';
-import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:todo_and_lock/views/calendar/calender.dart';
 import 'package:todo_and_lock/views/setting/setting.dart';
 import 'package:todo_and_lock/views/main/achievement.dart';
-import 'package:intl/date_symbol_data_local.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'sync_service.dart';
+import 'services/lock_bridge.dart';
+import 'services/local_todo_controller.dart';
 
-import 'dart:developer';
-
-
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('ko', null);
   await Hive.initFlutter();
-  await dotenv.load(fileName: ".env");
-
-
-  await Supabase.initialize(
-    url: dotenv.env['SUPABASE_URL'] ?? "default_value",
-    anonKey:dotenv.env['ANON_KEY'] ?? "default_value" ,
-  );
-
-  final supabase = Supabase.instance.client;
   Hive.registerAdapter(TodoAdapter());
   Hive.registerAdapter(DurationAdapter());
-
-
-
-  await SyncService.syncOnStartup();
-  await Hive.openBox<Todo>('todos');
-
+  final box = await Hive.openBox<Todo>('todos');
+  final controller = LocalTodoController(box);
   runApp(const MyApp());
+  await controller.start();
 }
 
-
-@pragma("vm:entry-point")
-void overlayMain() async {
+@pragma('vm:entry-point')
+void overlayMain() {
   WidgetsFlutterBinding.ensureInitialized();
-
-  await Hive.initFlutter();
-
-  if (!Hive.isAdapterRegistered(0)) {
-    Hive.registerAdapter(TodoAdapter());
-    Hive.registerAdapter(DurationAdapter());
-  }
   runApp(
-    const MaterialApp(
+    MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: OverlayDataHandler(),
+      theme: AppTheme.lightTheme,
+      home: const OverlayDataHandler(),
     ),
   );
 }
 
 class OverlayDataHandler extends StatefulWidget {
   const OverlayDataHandler({super.key});
-
   @override
   State<OverlayDataHandler> createState() => _OverlayDataHandlerState();
 }
 
 class _OverlayDataHandlerState extends State<OverlayDataHandler> {
-  String id = "";
-  String contents = "할 일 없음";
-  Duration duration = Duration.zero;
-  DateTime? checkTime;
+  Map<String, dynamic>? _data;
+  StreamSubscription<dynamic>? _subscription;
+  Timer? _poll;
+  bool _reading = false;
 
   @override
   void initState() {
     super.initState();
+    _subscription = FlutterOverlayWindow.overlayListener.listen(
+      (_) => _reload(),
+    );
+    _poll = Timer.periodic(const Duration(seconds: 1), (_) => _reload());
+    _reload();
+  }
 
-    FlutterOverlayWindow.overlayListener.listen((data) {
-      if (data != null && data is Map) {
-        log("Data is Map, extracting values...");
-        setState(() {
-          id = data['id'] ?? "";
-          log("Extracted id: $id");
-
-          contents = data['contents'] ?? contents;
-          log("Extracted contents: $contents");
-
-          duration = Duration(seconds: data['duration'] ?? 0);
-          log("Extracted duration: $duration");
-
-          if (data['checkTime'] != null && data['checkTime'] != '') {
-            checkTime = DateTime.parse(data['checkTime']);
-            log("Extracted checkTime: $checkTime");
-          } else {
-            checkTime = null;
-            log("checkTime is null or empty");
-          }
-        });
-      } else {
-        log("Data is null or not a Map");
+  Future<void> _reload() async {
+    if (_reading) return;
+    _reading = true;
+    try {
+      final data = await LockBridge.current();
+      if (mounted && data?['session'] != _data?['session']) {
+        setState(() => _data = data);
       }
-    });
+    } catch (error) {
+      debugPrint('잠금 상태 확인 실패: $error');
+    } finally {
+      _reading = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    _subscription?.cancel();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    log("=== OverlayDataHandler build ===");
-    log("Building with - id: $id, contents: $contents, duration: $duration, checkTime: $checkTime");
-
-    if (id.isEmpty) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+    final data = _data;
+    if (data == null) {
+      return const Scaffold(body: Center(child: Text('잠금 상태 확인 중…')));
     }
-
     return LockOverlayView(
-      id: id,
-      contents: contents,
-      checkTime: checkTime,
-      duration: duration,
+      key: ValueKey(data['session']),
+      session: data['session'] as String,
+      id: data['id'] as String,
+      contents: data['contents'] as String,
+      checkTime: DateTime.parse(data['checkTime'] as String),
+      duration: Duration(seconds: data['duration'] as int),
     );
   }
 }
-
-
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -134,7 +107,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Todo Lock',
+      title: 'TODOnLOCK',
       theme: AppTheme.lightTheme,
       initialRoute: '/${DateFormat('yyyy-MM-dd').format(DateTime.now())}',
       onGenerateRoute: (settings) {
@@ -154,7 +127,8 @@ class MyApp extends StatelessWidget {
           } catch (e) {
             return PageRouteBuilder(
               settings: settings,
-              pageBuilder: (_, __, ___) => MainView(selectedDate: DateTime.now()),
+              pageBuilder: (_, __, ___) =>
+                  MainView(selectedDate: DateTime.now()),
               transitionDuration: Duration.zero,
               reverseTransitionDuration: Duration.zero,
               transitionsBuilder: (_, __, ___, child) => child,
@@ -164,10 +138,11 @@ class MyApp extends StatelessWidget {
         return null;
       },
       routes: {
-        '/create': (_) => TodoEditCreatePage(todo: null, initialDate: DateTime.now()),
+        '/create': (_) =>
+            TodoEditCreatePage(todo: null, initialDate: DateTime.now()),
         '/calendar': (_) => CalendarView(selectedDate: DateTime.now()),
-        '/setting':(_) => SettingsPage(),
-        '/achievement':(_) => Achievement(),
+        '/setting': (_) => SettingsPage(),
+        '/achievement': (_) => Achievement(),
       },
     );
   }

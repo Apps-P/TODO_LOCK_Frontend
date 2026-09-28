@@ -1,13 +1,11 @@
-
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:todo_and_lock/models/todo_model.dart';
 import 'package:todo_and_lock/theme/app_colors.dart';
-import 'package:todo_and_lock/sync_service.dart';
 
 /// 1. 타이머 업데이트 로직 (UI 갱신 필요 여부 반환)
 /// 매 초마다 Box를 순회하며 시간이 다 된 항목을 처리합니다.
-bool updateTodoStatus(Box<Todo> box) {
+Future<bool> updateTodoStatus(Box<Todo> box) async {
   final now = DateTime.now();
   bool needsUiUpdate = false;
 
@@ -22,8 +20,7 @@ bool updateTodoStatus(Box<Todo> box) {
       if (elapsed >= todo.duration) {
         // 시간이 다 되면 자동으로 완료 처리
         todo.done = true;
-        todo.save();
-        SyncService.pushTodo(todo);
+        await todo.save();
       } else {
         // 아직 진행 중인 항목이 하나라도 있다면 UI를 갱신해야 함
         needsUiUpdate = true;
@@ -34,7 +31,7 @@ bool updateTodoStatus(Box<Todo> box) {
 }
 
 /// 2. 체크박스 탭 로직
-void onCheckedTap(Todo todo) {
+Future<void> onCheckedTap(Todo todo) async {
   final now = DateTime.now();
 
   if (todo.checkTime == null) {
@@ -43,15 +40,18 @@ void onCheckedTap(Todo todo) {
     todo.done = false;
   }
 
-  todo.save();
-  SyncService.pushTodo(todo);
+  await todo.save();
 }
 
 /// 3. 상태별 배경색 결정
 ({Color background, Color text}) getTodoColor(Todo todo) {
-  if (todo.done) return (background: Colors.grey[200]!, text: AppColors.greyTxt); // 완료: 회색
-  if (todo.checkTime != null) return (background: AppColors.carrot, text: Colors.white); // 진행중: 오렌지
-  return (background: AppColors.listbg, text: Colors.black);  // 시작 전: 흰색
+  if (todo.done) {
+    return (background: Colors.grey[200]!, text: AppColors.greyTxt); // 완료: 회색
+  }
+  if (todo.checkTime != null) {
+    return (background: AppColors.carrot, text: Colors.white); // 진행중: 오렌지
+  }
+  return (background: AppColors.listbg, text: Colors.black); // 시작 전: 흰색
 }
 
 /// 4. 체크박스 UI 상태 (시작 전만 빈 체크박스)
