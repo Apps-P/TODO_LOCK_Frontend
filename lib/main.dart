@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:intl/intl.dart';
+import 'services/guide_preferences.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:todo_and_lock/models/todo_model.dart';
@@ -23,6 +23,7 @@ Future<void> main() async {
   Hive.registerAdapter(TodoAdapter());
   Hive.registerAdapter(DurationAdapter());
   final box = await Hive.openBox<Todo>('todos');
+  await Hive.openBox<dynamic>(GuidePreferences.boxName);
   final controller = LocalTodoController(box);
   runApp(const MyApp());
   await controller.start();
@@ -109,7 +110,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'TODOnLOCK',
       theme: AppTheme.lightTheme,
-      initialRoute: '/${DateFormat('yyyy-MM-dd').format(DateTime.now())}',
+      home: MainView(selectedDate: DateTime.now()),
       onGenerateRoute: (settings) {
         if (settings.name != null && settings.name!.startsWith('/')) {
           final dateString = settings.name!.substring(1);
