@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'notification_settings.dart';
 import 'package:todo_and_lock/views/main/main_view.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:todo_and_lock/theme/sliding_toggle.dart';
@@ -78,6 +79,8 @@ class _SettingsPageState extends State<SettingsPage>
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          const NotificationSettingsCard(),
+          const SizedBox(height: 16),
           _buildSettingTile(
             title: '다른 앱 위에 그리기 권한',
             subtitle: '오버레이 기능을 사용하기 위해 필요합니다.',

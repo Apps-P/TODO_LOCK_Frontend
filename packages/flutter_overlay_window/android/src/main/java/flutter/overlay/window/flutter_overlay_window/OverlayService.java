@@ -335,24 +335,11 @@ public class OverlayService extends Service implements View.OnTouchListener {
             overlayMessageChannel = new BasicMessageChannel(flutterEngine.getDartExecutor(), OverlayConstants.MESSENGER_TAG, JSONMessageCodec.INSTANCE);
         }
 
-        createNotificationChannel();
-        Intent notificationIntent = new Intent(this, FlutterOverlayWindowPlugin.class);
-        int pendingFlags;
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            pendingFlags = PendingIntent.FLAG_IMMUTABLE;
-        } else {
-            pendingFlags = PendingIntent.FLAG_UPDATE_CURRENT;
-        }
-        PendingIntent pendingIntent = PendingIntent.getActivity(this,
-                0, notificationIntent, pendingFlags);
-        final int notifyIcon = getDrawableResourceId("mipmap", "launcher");
-        Notification notification = new NotificationCompat.Builder(this, OverlayConstants.CHANNEL_ID)
-                .setContentTitle(WindowSetup.overlayTitle)
-                .setContentText(WindowSetup.overlayContent)
-                .setSmallIcon(notifyIcon == 0 ? R.drawable.notification_icon : notifyIcon)
-                .setContentIntent(pendingIntent)
-                .setVisibility(WindowSetup.notificationVisibility)
-                .build();
+        org.json.JSONObject active = LockBillingBridge.notificationData();
+        String date = active.optString("date", TodoNotificationPlan.day(System.currentTimeMillis(), java.util.TimeZone.getDefault()));
+        Notification notification = TodoNotifications.runningNotification(this,
+                active.optString("contents", WindowSetup.overlayContent), date,
+                active.optLong("endTime", System.currentTimeMillis() + 60000));
         startForeground(OverlayConstants.NOTIFICATION_ID, notification);
         instance = this;
     }

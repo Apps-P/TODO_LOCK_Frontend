@@ -27,6 +27,7 @@ android {
     }
 
     compileSdk 35
+    testOptions { unitTests.includeAndroidResources = true }
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -40,4 +41,5 @@ android {
 dependencies {
     implementation "com.android.billingclient:billing:8.3.0"
     testImplementation "junit:junit:4.13.2"
+    testImplementation "org.robolectric:robolectric:4.14.1"
 }

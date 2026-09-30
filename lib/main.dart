@@ -15,6 +15,7 @@ import 'package:todo_and_lock/views/setting/setting.dart';
 import 'package:todo_and_lock/views/main/achievement.dart';
 import 'services/lock_bridge.dart';
 import 'services/local_todo_controller.dart';
+import 'services/todo_notifications.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,10 +24,11 @@ Future<void> main() async {
   Hive.registerAdapter(TodoAdapter());
   Hive.registerAdapter(DurationAdapter());
   final box = await Hive.openBox<Todo>('todos');
-  await Hive.openBox<dynamic>(GuidePreferences.boxName);
+  final preferences = await Hive.openBox<dynamic>(GuidePreferences.boxName);
   final controller = LocalTodoController(box);
   runApp(const MyApp());
   await controller.start();
+  await TodoNotificationController(box, preferences).start();
 }
 
 @pragma('vm:entry-point')
@@ -102,12 +104,53 @@ class _OverlayDataHandlerState extends State<OverlayDataHandler> {
   }
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final _navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
+  void initState() {
+    super.initState();
+    if (!TodoNotifications.supported) return;
+    TodoNotifications.channel.setMethodCallHandler((call) async {
+      if (call.method == 'openDate') _openDate(call.arguments as String?);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        final date = await TodoNotifications.channel.invokeMethod<String>(
+          'consumeLaunchDate',
+        );
+        if (mounted) _openDate(date);
+      } catch (error) {
+        debugPrint('알림 화면 열기 실패: $error');
+      }
+    });
+  }
+
+  void _openDate(String? date) {
+    if (date == null || DateTime.tryParse(date) == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _navigatorKey.currentState?.pushNamed('/$date');
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
+  @override
+  void dispose() {
+    if (TodoNotifications.supported)
+      TodoNotifications.channel.setMethodCallHandler(null);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'TODOnLOCK',
       theme: AppTheme.lightTheme,
       home: MainView(selectedDate: DateTime.now()),
