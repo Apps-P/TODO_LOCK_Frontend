@@ -1,16 +1,9 @@
+plugins {
+    id 'com.android.library'
+}
+
 group 'flutter.overlay.window.flutter_overlay_window'
 version '1.0'
-
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-
-    dependencies {
-        classpath 'com.android.tools.build:gradle:7.3.0'
-    }
-}
 
 rootProject.allprojects {
     repositories {
@@ -19,14 +12,12 @@ rootProject.allprojects {
     }
 }
 
-apply plugin: 'com.android.library'
-
 android {
     if (project.android.hasProperty("namespace")) {
         namespace 'flutter.overlay.window.flutter_overlay_window'
     }
 
-    compileSdk 35
+    compileSdk 36
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -38,6 +29,6 @@ android {
     }
 }
 dependencies {
-    implementation "com.android.billingclient:billing:8.3.0"
+    implementation "com.android.billingclient:billing:9.1.0"
     testImplementation "junit:junit:4.13.2"
 }

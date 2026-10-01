@@ -70,7 +70,7 @@ class _SlidingToggleState extends State<SlidingToggle>
       onTap: _toggle,
       child: AnimatedBuilder(
         animation: _ctrl,
-        builder: (_, __) {
+        builder: (_, _) {
           return Container(
             width: w,
             height: h,
@@ -103,7 +103,7 @@ class _SlidingToggleState extends State<SlidingToggle>
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.25),
+                          color: Colors.black.withValues(alpha: 0.25),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         )

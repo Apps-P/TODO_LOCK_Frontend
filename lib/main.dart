@@ -120,19 +120,19 @@ class MyApp extends StatelessWidget {
 
             return PageRouteBuilder(
               settings: settings,
-              pageBuilder: (_, __, ___) => MainView(selectedDate: selectedDate),
+              pageBuilder: (_, _, _) => MainView(selectedDate: selectedDate),
               transitionDuration: Duration.zero,
               reverseTransitionDuration: Duration.zero,
-              transitionsBuilder: (_, __, ___, child) => child,
+              transitionsBuilder: (_, _, _, child) => child,
             );
           } catch (e) {
             return PageRouteBuilder(
               settings: settings,
-              pageBuilder: (_, __, ___) =>
+              pageBuilder: (_, _, _) =>
                   MainView(selectedDate: DateTime.now()),
               transitionDuration: Duration.zero,
               reverseTransitionDuration: Duration.zero,
-              transitionsBuilder: (_, __, ___, child) => child,
+              transitionsBuilder: (_, _, _, child) => child,
             );
           }
         }

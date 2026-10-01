@@ -17,6 +17,8 @@
 ///         License:   SIL (http://scripts.sil.org/OFL)
 ///         Homepage:  http://www.alessioatzeni.com
 ///
+library;
+
 import 'package:flutter/widgets.dart';
 
 class MyFlutterApp {

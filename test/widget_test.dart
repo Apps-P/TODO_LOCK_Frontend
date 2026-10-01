@@ -32,7 +32,7 @@ void main() {
       Todo(content: '로컬 할 일', lock: true, duration: const Duration(minutes: 30))
         ..date = DateTime(2026, 9, 16)
         ..no = 1
-        ..user_id = 'local'
+        ..userId = 'local'
         ..checkTime = DateTime.now();
 
   test('local Todo survives reopening without authentication', () async {

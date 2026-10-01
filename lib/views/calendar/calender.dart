@@ -145,7 +145,7 @@ class _CalendarViewState extends State<CalendarView> {
                             ? Colors.red[400]
                             : isSat
                             ? Colors.blue[400]
-                            : theme.colorScheme.onSurface.withOpacity(0.6),
+                            : theme.colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                   ),
@@ -191,7 +191,7 @@ class _CalendarViewState extends State<CalendarView> {
                       color: isSelected
                           ? theme.colorScheme.primary
                           : isToday
-                          ? theme.colorScheme.primary.withOpacity(0.12)
+                          ? theme.colorScheme.primary.withValues(alpha: 0.12)
                           : Colors.transparent,
                       shape: BoxShape.circle,
                     ),
