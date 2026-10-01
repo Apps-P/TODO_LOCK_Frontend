@@ -21,6 +21,7 @@ class LockBridge {
       'session': sessionId(todo),
       'id': todo.id,
       'contents': todo.content,
+      'date': todo.date.toIso8601String().substring(0, 10),
       'duration': todo.duration.inSeconds,
       'checkTime': todo.checkTime!.toIso8601String(),
       'endTime': todo.checkTime!.add(todo.duration).millisecondsSinceEpoch,
