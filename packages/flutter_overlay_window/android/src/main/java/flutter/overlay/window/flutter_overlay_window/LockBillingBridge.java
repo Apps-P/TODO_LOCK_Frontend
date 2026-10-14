@@ -43,6 +43,7 @@ final class LockBillingBridge {
         if (!prefs.edit().putString(key, value.toString()).commit())
             throw new IllegalStateException("잠금 기록을 저장하지 못했습니다.");
     }
+    static JSONObject notificationData() { return json("active"); }
     static String currentSession() { return json("active").optString("session"); }
     static boolean hasSession() { return !currentSession().isEmpty(); }
     static boolean isRequestActive(String session) {

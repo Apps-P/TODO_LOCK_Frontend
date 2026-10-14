@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'services/guide_preferences.dart';
+import 'services/todo_notifications.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:todo_and_lock/models/todo_model.dart';
@@ -27,6 +28,10 @@ Future<void> main() async {
   final controller = LocalTodoController(box);
   runApp(const MyApp());
   await controller.start();
+  await TodoNotificationController(
+    box,
+    Hive.box<dynamic>(GuidePreferences.boxName),
+  ).start();
 }
 
 @pragma('vm:entry-point')
@@ -102,12 +107,55 @@ class _OverlayDataHandlerState extends State<OverlayDataHandler> {
   }
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final _navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
+  void initState() {
+    super.initState();
+    if (!TodoNotifications.supported) return;
+    TodoNotifications.channel.setMethodCallHandler((call) async {
+      if (call.method == 'openDate') _openDate(call.arguments as String?);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        _openDate(
+          await TodoNotifications.channel.invokeMethod<String>(
+            'consumeLaunchDate',
+          ),
+        );
+      } catch (error) {
+        debugPrint('알림 화면 열기 실패: $error');
+      }
+    });
+  }
+
+  void _openDate(String? date) {
+    if (!mounted || date == null || DateTime.tryParse(date) == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _navigatorKey.currentState?.pushNamed('/$date');
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
+  @override
+  void dispose() {
+    if (TodoNotifications.supported) {
+      TodoNotifications.channel.setMethodCallHandler(null);
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'TODOnLOCK',
       theme: AppTheme.lightTheme,
       home: MainView(selectedDate: DateTime.now()),
@@ -128,8 +176,7 @@ class MyApp extends StatelessWidget {
           } catch (e) {
             return PageRouteBuilder(
               settings: settings,
-              pageBuilder: (_, _, _) =>
-                  MainView(selectedDate: DateTime.now()),
+              pageBuilder: (_, _, _) => MainView(selectedDate: DateTime.now()),
               transitionDuration: Duration.zero,
               reverseTransitionDuration: Duration.zero,
               transitionsBuilder: (_, _, _, child) => child,

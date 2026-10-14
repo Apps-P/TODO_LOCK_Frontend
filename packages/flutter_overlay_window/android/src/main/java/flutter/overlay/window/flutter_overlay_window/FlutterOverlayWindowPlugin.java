@@ -40,6 +40,7 @@ public class FlutterOverlayWindowPlugin implements
 
     private MethodChannel channel;
     private MethodChannel lockChannel;
+    private TodoNotificationBridge notifications;
     private Context context;
     private Activity mActivity;
     private BasicMessageChannel<Object> messenger;
@@ -50,6 +51,7 @@ public class FlutterOverlayWindowPlugin implements
     public void onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
         this.context = flutterPluginBinding.getApplicationContext();
         LockBillingBridge.init(context);
+        notifications = new TodoNotificationBridge(context, flutterPluginBinding.getBinaryMessenger());
         lockChannel = new MethodChannel(flutterPluginBinding.getBinaryMessenger(), "todolock/lock");
         lockChannel.setMethodCallHandler(LockBillingBridge::handle);
         channel = new MethodChannel(flutterPluginBinding.getBinaryMessenger(), OverlayConstants.CHANNEL_TAG);
@@ -141,6 +143,7 @@ public class FlutterOverlayWindowPlugin implements
 
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
+        notifications.dispose();
         channel.setMethodCallHandler(null);
         lockChannel.setMethodCallHandler(null);
         messenger.setMessageHandler(null);
@@ -149,6 +152,7 @@ public class FlutterOverlayWindowPlugin implements
     @Override
     public void onAttachedToActivity(@NonNull ActivityPluginBinding binding) {
         mActivity = binding.getActivity();
+        notifications.attach(binding);
         binding.addActivityResultListener(this);
         WindowSetup.messenger = messenger;
         if (FlutterEngineCache.getInstance().get(OverlayConstants.CACHED_TAG) == null) {
@@ -163,15 +167,18 @@ public class FlutterOverlayWindowPlugin implements
 
     @Override
     public void onDetachedFromActivityForConfigChanges() {
+        notifications.detach();
     }
 
     @Override
     public void onReattachedToActivityForConfigChanges(@NonNull ActivityPluginBinding binding) {
         this.mActivity = binding.getActivity();
+        notifications.attach(binding);
     }
 
     @Override
     public void onDetachedFromActivity() {
+        notifications.detach();
     }
 
     @Override

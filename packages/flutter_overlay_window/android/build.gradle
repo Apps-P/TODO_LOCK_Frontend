@@ -24,6 +24,8 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
+    testOptions { unitTests.includeAndroidResources = true }
+
     defaultConfig {
         minSdkVersion 23
     }
@@ -31,4 +33,5 @@ android {
 dependencies {
     implementation "com.android.billingclient:billing:9.1.0"
     testImplementation "junit:junit:4.13.2"
+    testImplementation "org.robolectric:robolectric:4.14.1"
 }

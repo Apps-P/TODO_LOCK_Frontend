@@ -97,8 +97,9 @@ Future<void> showLockOverlay() => FlutterOverlayWindow.showOverlay(
   overlayContent: '설정한 시간이 끝날 때까지 잠금이 유지됩니다.',
   flag: OverlayFlag.defaultFlag,
   visibility: NotificationVisibility.visibilityPublic,
-  positionGravity: PositionGravity.auto,
-  height: WindowSize.matchParent,
-  width: WindowSize.matchParent,
+  alignment: OverlayAlignment.topLeft,
+  positionGravity: PositionGravity.none,
+  height: WindowSize.fullCover,
+  width: WindowSize.fullCover,
   startPosition: const OverlayPosition(0, 0),
 );

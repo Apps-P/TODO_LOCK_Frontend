@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'notification_settings.dart';
 import 'package:todo_and_lock/views/main/main_view.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:todo_and_lock/theme/sliding_toggle.dart';
@@ -110,6 +111,8 @@ class _SettingsPageState extends State<SettingsPage>
               ),
             ),
           ),
+          const SizedBox(height: 16),
+          const NotificationSettingsCard(),
         ],
       ),
     );
