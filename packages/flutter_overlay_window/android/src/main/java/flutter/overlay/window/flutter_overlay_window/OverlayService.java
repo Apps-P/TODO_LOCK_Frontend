@@ -12,13 +12,12 @@ import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.app.PendingIntent;
 import android.graphics.Point;
+import android.graphics.Rect;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
-import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.TypedValue;
-import android.view.Display;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -45,11 +44,7 @@ import io.flutter.plugin.common.JSONMessageCodec;
 import io.flutter.plugin.common.MethodChannel;
 
 public class OverlayService extends Service implements View.OnTouchListener {
-    private final int DEFAULT_NAV_BAR_HEIGHT_DP = 48;
-    private final int DEFAULT_STATUS_BAR_HEIGHT_DP = 25;
-
-    private Integer mStatusBarHeight = -1;
-    private Integer mNavigationBarHeight = -1;
+    private static final int FULL_COVER = -1999;
     private Resources mResources;
 
     public static final String INTENT_EXTRA_IS_CLOSE_WINDOW = "IsCloseWindow";
@@ -128,7 +123,8 @@ public class OverlayService extends Service implements View.OnTouchListener {
         engine.getLifecycleChannel().appIsResumed();
         flutterView = new FlutterView(getApplicationContext(), new FlutterTextureView(getApplicationContext()));
         flutterView.attachToFlutterEngine(FlutterEngineCache.getInstance().get(OverlayConstants.CACHED_TAG));
-        flutterView.setFitsSystemWindows(true);
+        // Flutter's SafeArea handles content insets; the background fills the window.
+        flutterView.setFitsSystemWindows(false);
         flutterView.setFocusable(true);
         flutterView.setFocusableInTouchMode(true);
         flutterView.setBackgroundColor(Color.TRANSPARENT);
@@ -153,22 +149,11 @@ public class OverlayService extends Service implements View.OnTouchListener {
         });
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-            windowManager.getDefaultDisplay().getSize(szWindow);
-        } else {
-            DisplayMetrics displaymetrics = new DisplayMetrics();
-            windowManager.getDefaultDisplay().getMetrics(displaymetrics);
-            int w = displaymetrics.widthPixels;
-            int h = displaymetrics.heightPixels;
-            szWindow.set(w, h);
-        }
-        int dx = startX == OverlayConstants.DEFAULT_XY ? 0 : startX;
-        int dy = startY == OverlayConstants.DEFAULT_XY ? -statusBarHeightPx() : startY;
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
-                WindowSetup.width == -1999 ? -1 : WindowSetup.width,
-                WindowSetup.height != -1999 ? WindowSetup.height : screenHeight(),
+                WindowSetup.width,
+                WindowSetup.height,
                 0,
-                -statusBarHeightPx(),
+                0,
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE,
                 WindowSetup.flag | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
                         | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
@@ -180,52 +165,49 @@ public class OverlayService extends Service implements View.OnTouchListener {
             params.alpha = MAXIMUM_OPACITY_ALLOWED_FOR_S_AND_HIGHER;
         }
         params.gravity = WindowSetup.gravity;
+        params.x = startX == OverlayConstants.DEFAULT_XY ? 0 : dpToPx(startX);
+        params.y = startY == OverlayConstants.DEFAULT_XY ? 0 : dpToPx(startY);
+        applyOverlaySize(params);
         flutterView.setOnTouchListener(this);
         windowManager.addView(flutterView, params);
-        moveOverlay(dx, dy, null);
         return START_STICKY;
     }
 
-
-    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
-    private int screenHeight() {
-        Display display = windowManager.getDefaultDisplay();
-        DisplayMetrics dm = new DisplayMetrics();
-        display.getRealMetrics(dm);
-        return inPortrait() ?
-                dm.heightPixels + statusBarHeightPx() + navigationBarHeightPx()
-                :
-                dm.heightPixels + statusBarHeightPx();
-    }
-
-    private int statusBarHeightPx() {
-        if (mStatusBarHeight == -1) {
-            int statusBarHeightId = mResources.getIdentifier("status_bar_height", "dimen", "android");
-
-            if (statusBarHeightId > 0) {
-                mStatusBarHeight = mResources.getDimensionPixelSize(statusBarHeightId);
-            } else {
-                mStatusBarHeight = dpToPx(DEFAULT_STATUS_BAR_HEIGHT_DP);
+    private void applyOverlaySize(WindowManager.LayoutParams params) {
+        // These bounds are already physical pixels and include the system bars.
+        // Do not convert them to dp or add estimated status/navigation bar heights.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Rect bounds = windowManager.getMaximumWindowMetrics().getBounds();
+            szWindow.set(bounds.width(), bounds.height());
+        } else {
+            windowManager.getDefaultDisplay().getRealSize(szWindow);
+        }
+        params.width = WindowSetup.width == FULL_COVER ? szWindow.x : WindowSetup.width;
+        params.height = WindowSetup.height == FULL_COVER ? szWindow.y : WindowSetup.height;
+        if (WindowSetup.width == FULL_COVER || WindowSetup.height == FULL_COVER) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                params.setFitInsetsTypes(0);
+                params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            }
+            if (WindowSetup.width == FULL_COVER && WindowSetup.height == FULL_COVER) {
+                params.gravity = Gravity.TOP | Gravity.LEFT;
+                params.x = 0;
+                params.y = 0;
             }
         }
-
-        return mStatusBarHeight;
     }
 
-    int navigationBarHeightPx() {
-        if (mNavigationBarHeight == -1) {
-            int navBarHeightId = mResources.getIdentifier("navigation_bar_height", "dimen", "android");
-
-            if (navBarHeightId > 0) {
-                mNavigationBarHeight = mResources.getDimensionPixelSize(navBarHeightId);
-            } else {
-                mNavigationBarHeight = dpToPx(DEFAULT_NAV_BAR_HEIGHT_DP);
-            }
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        if (windowManager != null && flutterView != null) {
+            WindowManager.LayoutParams params = (WindowManager.LayoutParams) flutterView.getLayoutParams();
+            applyOverlaySize(params);
+            windowManager.updateViewLayout(flutterView, params);
         }
-
-        return mNavigationBarHeight;
     }
-
 
     private void updateOverlayFlag(MethodChannel.Result result, String flag) {
         if (windowManager != null) {
@@ -249,9 +231,10 @@ public class OverlayService extends Service implements View.OnTouchListener {
     private void resizeOverlay(int width, int height, boolean enableDrag, MethodChannel.Result result) {
         if (windowManager != null) {
             WindowManager.LayoutParams params = (WindowManager.LayoutParams) flutterView.getLayoutParams();
-            params.width = (width == -1999 || width == -1) ? -1 : dpToPx(width);
-            params.height = (height != 1999 || height != -1) ? dpToPx(height) : height;
+            WindowSetup.width = width < 0 ? width : dpToPx(width);
+            WindowSetup.height = height < 0 ? height : dpToPx(height);
             WindowSetup.enableDrag = enableDrag;
+            applyOverlaySize(params);
             windowManager.updateViewLayout(flutterView, params);
             result.success(true);
         } else {
@@ -308,6 +291,13 @@ public class OverlayService extends Service implements View.OnTouchListener {
         instance.flutterView.setVisibility(hidden ? View.GONE : View.VISIBLE);
     }
 
+    static void refreshNotification() {
+        if (instance != null && isRunning) {
+            instance.startForeground(OverlayConstants.NOTIFICATION_ID,
+                    TodoNotifications.lockServiceNotification(instance, LockBillingBridge.notificationData()));
+        }
+    }
+
     @Override
     public void onCreate() {
         LockBillingBridge.init(this);
@@ -336,10 +326,7 @@ public class OverlayService extends Service implements View.OnTouchListener {
         }
 
         org.json.JSONObject active = LockBillingBridge.notificationData();
-        String date = active.optString("date", TodoNotificationPlan.day(System.currentTimeMillis(), java.util.TimeZone.getDefault()));
-        Notification notification = TodoNotifications.runningNotification(this,
-                active.optString("contents", WindowSetup.overlayContent), date,
-                active.optLong("endTime", System.currentTimeMillis() + 60000));
+        Notification notification = TodoNotifications.lockServiceNotification(this, active);
         startForeground(OverlayConstants.NOTIFICATION_ID, notification);
         instance = this;
     }
@@ -368,10 +355,6 @@ public class OverlayService extends Service implements View.OnTouchListener {
 
     private double pxToDp(int px) {
         return (double) px / mResources.getDisplayMetrics().density;
-    }
-
-    private boolean inPortrait() {
-        return mResources.getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT;
     }
 
     @Override

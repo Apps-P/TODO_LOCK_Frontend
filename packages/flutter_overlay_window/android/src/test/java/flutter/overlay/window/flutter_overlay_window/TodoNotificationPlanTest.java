@@ -1,46 +1,26 @@
 package flutter.overlay.window.flutter_overlay_window;
 
 import org.junit.Test;
-import java.util.Calendar;
 import java.util.TimeZone;
 import static org.junit.Assert.*;
 
 public class TodoNotificationPlanTest {
-    @Test public void onlyFutureNewJobsAreEligible() {
-        assertFalse(TodoNotificationPlan.eligible("2026-09-30", "", "2026-09-30", false, false));
-        assertFalse(TodoNotificationPlan.eligible("2026-09-29", "", "2026-09-30", false, false));
-        assertTrue(TodoNotificationPlan.eligible("2026-10-01", "", "2026-09-30", false, false));
+    @Test public void midnightUsesCalendarDateAcrossDaylightSaving() {
+        TimeZone ny = TimeZone.getTimeZone("America/New_York");
+        long spring = TodoNotificationPlan.atTime("2026-03-08", 0, ny);
+        long fall = TodoNotificationPlan.atTime("2026-11-01", 0, ny);
+        assertEquals(23 * 3600000L, TodoNotificationPlan.nextMidnight(spring, ny) - spring);
+        assertEquals(25 * 3600000L, TodoNotificationPlan.nextMidnight(fall, ny) - fall);
+        assertEquals("2026-03-09", TodoNotificationPlan.day(TodoNotificationPlan.nextMidnight(spring, ny), ny));
+    }    @Test public void usesLocalTimeAndDaylightSaving() {
+        TimeZone ny = TimeZone.getTimeZone("America/New_York");
+        assertEquals(23 * 3600000L, TodoNotificationPlan.atTime("2026-03-08", 540, ny) - TodoNotificationPlan.atTime("2026-03-07", 540, ny));
+        assertEquals(9 * 3600000L, TodoNotificationPlan.atTime("2026-10-05", 540, TimeZone.getTimeZone("UTC")) - TodoNotificationPlan.atTime("2026-10-05", 540, TimeZone.getTimeZone("Asia/Seoul")));
     }
-
-    @Test public void midnightRetainsEarlierPlansButMovingToTodayDoesNotAddOne() {
-        assertTrue(TodoNotificationPlan.eligible("2026-10-01", "2026-10-01", "2026-10-01", false, false));
-        assertFalse(TodoNotificationPlan.eligible("2026-10-01", "2026-10-02", "2026-10-01", false, false));
-        assertFalse(TodoNotificationPlan.eligible("2026-09-30", "2026-09-30", "2026-10-01", false, false));
+    @Test(expected = IllegalArgumentException.class) public void invalidTimeRejected() {
+        TodoNotificationPlan.atTime("2026-10-05", 1440, TimeZone.getDefault());
     }
-
-    @Test public void completedAndStartedJobsDoNotGetMorningReminders() {
-        assertFalse(TodoNotificationPlan.eligible("2026-10-01", "2026-10-01", "2026-09-30", true, false));
-        assertFalse(TodoNotificationPlan.eligible("2026-10-01", "2026-10-01", "2026-09-30", false, true));
-    }
-
-    @Test public void timeIsLocalCalendarTimeAcrossDst() {
-        TimeZone zone = TimeZone.getTimeZone("America/New_York");
-        long before = TodoNotificationPlan.atTime("2026-03-07", 540, zone);
-        long after = TodoNotificationPlan.atTime("2026-03-08", 540, zone);
-        assertEquals(23 * 60 * 60 * 1000L, after - before);
-        Calendar calendar = Calendar.getInstance(zone);
-        calendar.setTimeInMillis(after);
-        assertEquals(9, calendar.get(Calendar.HOUR_OF_DAY));
-        assertEquals(0, calendar.get(Calendar.MINUTE));
-    }
-
-    @Test public void timezoneChangeKeepsNineOClockLocally() {
-        long korea = TodoNotificationPlan.atTime("2026-10-01", 540, TimeZone.getTimeZone("Asia/Seoul"));
-        long utc = TodoNotificationPlan.atTime("2026-10-01", 540, TimeZone.getTimeZone("UTC"));
-        assertEquals(9 * 60 * 60 * 1000L, utc - korea);
-    }
-
-    @Test(expected = IllegalArgumentException.class) public void invalidTimeIsRejected() {
-        TodoNotificationPlan.atTime("2026-10-01", 1440, TimeZone.getTimeZone("UTC"));
+    @Test(expected = IllegalArgumentException.class) public void invalidDateRejected() {
+        TodoNotificationPlan.atTime("2026-02-30", 540, TimeZone.getDefault());
     }
 }

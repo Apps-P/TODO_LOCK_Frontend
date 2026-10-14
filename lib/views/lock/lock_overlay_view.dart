@@ -157,6 +157,7 @@ class _LockOverlayViewState extends State<LockOverlayView> {
             tempRemainingSeconds: breakSeconds,
           )
         : Stack(
+            fit: StackFit.expand,
             children: [
               LockUI(
                 remainingTime: remaining,

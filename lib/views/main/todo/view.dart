@@ -43,8 +43,6 @@ class _TodoListViewState extends State<TodoListView> {
 
   /// Reorder 로직: 손으로 순서 바꿀 때 호출 및 no 재할당
   void _onReorder(List<Todo> todos, int oldIndex, int newIndex) {
-    if (oldIndex < newIndex) newIndex -= 1;
-
     final Todo item = todos.removeAt(oldIndex);
     todos.insert(newIndex, item);
 
@@ -184,7 +182,7 @@ class _TodoListViewState extends State<TodoListView> {
           // Keep the card margins transparent in the drag overlay.
           proxyDecorator: (child, index, animation) =>
               Material(type: MaterialType.transparency, child: child),
-          onReorder: (old, next) => _onReorder(todos, old, next),
+          onReorderItem: (old, next) => _onReorder(todos, old, next),
           itemBuilder: (context, index) =>
               _buildTodoCard(context, todos[index], todos, index),
         );
@@ -235,7 +233,7 @@ class _TodoListViewState extends State<TodoListView> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),

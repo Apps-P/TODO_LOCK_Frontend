@@ -145,7 +145,7 @@ class _TodoEditCreatePageState extends State<TodoEditCreatePage> {
                 ),
               )
               ..date = _selectedDate
-              ..user_id = "local"
+              ..userId = "local"
               ..no = _getNextNo(_selectedDate);
 
         await _todoBox.add(newTodo);

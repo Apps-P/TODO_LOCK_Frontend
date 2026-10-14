@@ -12,7 +12,7 @@ class Todo extends HiveObject {
   late String id;
 
   @HiveField(1)
-  late String user_id;
+  late String userId;
 
   @HiveField(2)
   late DateTime date;

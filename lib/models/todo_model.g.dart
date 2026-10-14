@@ -23,7 +23,7 @@ class TodoAdapter extends TypeAdapter<Todo> {
       done: fields[8] as bool,
     )
       ..id = fields[0] as String
-      ..user_id = fields[1] as String
+      ..userId = fields[1] as String
       ..date = fields[2] as DateTime
       ..no = fields[3] as int
       ..checkTime = fields[6] as DateTime?;
@@ -36,7 +36,7 @@ class TodoAdapter extends TypeAdapter<Todo> {
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.user_id)
+      ..write(obj.userId)
       ..writeByte(2)
       ..write(obj.date)
       ..writeByte(3)

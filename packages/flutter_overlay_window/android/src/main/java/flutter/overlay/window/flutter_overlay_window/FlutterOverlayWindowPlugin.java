@@ -143,9 +143,9 @@ public class FlutterOverlayWindowPlugin implements
 
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
+        notifications.dispose();
         channel.setMethodCallHandler(null);
         lockChannel.setMethodCallHandler(null);
-        notifications.dispose();
         messenger.setMessageHandler(null);
     }
 

@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:todo_and_lock/services/todo_notifications.dart';
-import 'package:todo_and_lock/theme/app_colors.dart';
+import '../../services/todo_notifications.dart';
 
 class NotificationSettingsCard extends StatefulWidget {
   const NotificationSettingsCard({super.key});
-
   @override
   State<NotificationSettingsCard> createState() =>
       _NotificationSettingsCardState();
@@ -15,7 +13,6 @@ class _NotificationSettingsCardState extends State<NotificationSettingsCard>
     with WidgetsBindingObserver {
   NotificationStatus? _status;
   bool _saving = false;
-  String? _error;
 
   @override
   void initState() {
@@ -36,15 +33,12 @@ class _NotificationSettingsCardState extends State<NotificationSettingsCard>
   }
 
   Future<void> _refresh() async {
+    if (!TodoNotifications.supported) return;
     try {
       final status = await TodoNotifications.status();
-      if (mounted)
-        setState(() {
-          _status = status;
-          _error = null;
-        });
-    } catch (_) {
-      if (mounted) setState(() => _error = '알림 상태를 확인하지 못했습니다.');
+      if (mounted) setState(() => _status = status);
+    } catch (error) {
+      debugPrint('알림 권한 확인 실패: $error');
     }
   }
 
@@ -55,137 +49,112 @@ class _NotificationSettingsCardState extends State<NotificationSettingsCard>
       await action();
       await _refresh();
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('알림 설정을 변경하지 못했습니다. 다시 시도해주세요.')),
+          const SnackBar(content: Text('알림 설정을 변경하지 못했어요. 다시 시도해 주세요.')),
         );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  Future<void> _chooseTime() async {
-    final minute = NotificationPreferences.minuteOfDay;
-    final selected = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay(hour: minute ~/ 60, minute: minute % 60),
-      helpText: '할 일 알림 시간',
-      cancelText: '취소',
-      confirmText: '확인',
-      hourLabelText: '시',
-      minuteLabelText: '분',
-    );
-    if (selected != null && mounted) {
-      await _perform(
-        () => NotificationPreferences.setTime(
-          selected.hour * 60 + selected.minute,
-        ),
-      );
-    }
-  }
-
-  String _timeLabel(int minutes) {
-    final hour = minutes ~/ 60;
-    return '${hour < 12 ? '오전' : '오후'} ${hour % 12 == 0 ? 12 : hour % 12}:${(minutes % 60).toString().padLeft(2, '0')}';
-  }
+  Future<void> _toggle(bool value, Future<void> Function(bool) save) =>
+      _perform(() async {
+        await save(value);
+        if (value && TodoNotifications.supported) {
+          await TodoNotifications.requestPermission();
+        }
+      });
 
   @override
   Widget build(BuildContext context) => ValueListenableBuilder(
     valueListenable: NotificationPreferences.box.listenable(
       keys: [
-        NotificationPreferences.enabledKey,
-        NotificationPreferences.timeKey,
+        NotificationPreferences.dailyKey,
+        NotificationPreferences.runningKey,
       ],
     ),
-    builder: (context, _, child) {
-      final enabled = NotificationPreferences.enabled;
+    builder: (context, _, _) {
+      final daily = NotificationPreferences.dailyEnabled;
+      final running = NotificationPreferences.runningEnabled;
       final status = _status;
+      final blocked =
+          status != null &&
+          ((daily && (!status.allowed || !status.dailyAllowed)) ||
+              (running && (!status.allowed || !status.runningAllowed)));
       return Card(
-        elevation: 0,
         color: Colors.white,
+        elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Column(
           children: [
             SwitchListTile.adaptive(
-              key: const ValueKey('future-reminders-switch'),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 8,
+              key: const ValueKey('daily-jobs-switch'),
+              title: const Text('오늘의 할 일 표시'),
+              subtitle: const Text(
+                '상태표시줄에 오늘의 목록을 순서대로 표시해요. 날짜가 바뀌면 목록도 바뀌어요.',
               ),
-              secondary: const Icon(
-                Icons.notifications_outlined,
-                color: AppColors.carrot,
-              ),
-              title: const Text('예정된 할 일 알림'),
-              subtitle: const Text('미래 날짜에 미리 추가한 할 일을 해당일에 알려드려요.'),
-              value: enabled,
+              value: daily,
               onChanged: _saving
                   ? null
-                  : (value) => _perform(() async {
-                      await NotificationPreferences.setEnabled(value);
-                      if (value) await TodoNotifications.requestPermission();
-                    }),
+                  : (value) =>
+                        _toggle(value, NotificationPreferences.setDailyEnabled),
             ),
-            const Divider(height: 1, indent: 20, endIndent: 20),
-            ListTile(
-              key: const ValueKey('reminder-time'),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-              leading: const Icon(Icons.schedule),
-              title: const Text('알림 시간'),
-              subtitle: Text(_timeLabel(NotificationPreferences.minuteOfDay)),
-              enabled: enabled && !_saving,
-              trailing: const Icon(Icons.chevron_right),
-              onTap: _chooseTime,
+            SwitchListTile.adaptive(
+              key: const ValueKey('running-timer-switch'),
+              title: const Text('진행 중인 타이머 표시'),
+              subtitle: const Text('실행 중인 할 일의 남은 시간을 별도 알림으로 표시해요.'),
+              value: running,
+              onChanged: _saving
+                  ? null
+                  : (value) => _toggle(
+                      value,
+                      NotificationPreferences.setRunningEnabled,
+                    ),
             ),
             const Padding(
-              padding: EdgeInsets.fromLTRB(20, 0, 20, 16),
-              child: Text(
-                '진행 중인 할 일은 알림창에 이름과 남은 시간이 표시돼요. 완료하거나 중단하면 사라져요.',
-                style: TextStyle(fontSize: 13, color: Colors.black54),
-              ),
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Text('화면 잠금 중에는 타이머를 꺼도 잠금 실행 안내가 표시됩니다.'),
             ),
-            if (_error != null)
+            if (blocked)
               ListTile(
-                title: Text(_error!),
-                onTap: _refresh,
-                trailing: const Icon(Icons.refresh),
+                leading: const Icon(Icons.notifications_off_outlined),
+                title: const Text('알림이 차단되어 있어요'),
+                subtitle: const Text('휴대폰 설정에서 알림을 허용해 주세요.'),
+                trailing: TextButton(
+                  onPressed: _saving
+                      ? null
+                      : () => _perform(() async {
+                          await TodoNotifications.requestPermission();
+                          final updated = await TodoNotifications.status();
+                          if (!updated.allowed ||
+                              (daily && !updated.dailyAllowed) ||
+                              (running && !updated.runningAllowed)) {
+                            await TodoNotifications.openSystemSettings();
+                          }
+                        }),
+                  child: const Text('허용하기'),
+                ),
               ),
-            if (status != null && TodoNotifications.supported) ...[
-              if (!status.allowed)
-                ListTile(
-                  title: const Text('기기 알림 권한이 꺼져 있어요'),
-                  subtitle: const Text('예정된 할 일과 진행 상태를 표시하려면 알림을 허용해주세요.'),
-                  trailing: TextButton(
-                    onPressed: _saving
-                        ? null
-                        : () => _perform(() async {
-                            await TodoNotifications.requestPermission();
-                          }),
-                    child: const Text('허용하기'),
-                  ),
-                )
-              else if (!status.remindersAllowed || !status.runningAllowed)
-                const ListTile(
-                  title: Text('일부 알림이 기기 설정에서 꺼져 있어요'),
-                  subtitle: Text('시스템 알림 설정에서 필요한 알림을 켜주세요.'),
-                ),
-              if (enabled && !status.exactAllowed)
-                ListTile(
-                  title: const Text('정확한 시간에 알림'),
-                  subtitle: const Text(
-                    '알람 및 리마인더 권한을 허용하면 지정한 시간에 알림을 받을 수 있어요. 허용 전에는 늦게 도착할 수 있어요.',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () =>
-                      _perform(TodoNotifications.openExactAlarmSettings),
-                ),
+            if (status != null && daily && !status.exactAllowed)
               ListTile(
-                title: const Text('시스템 알림 설정'),
-                trailing: const Icon(Icons.open_in_new, size: 20),
-                onTap: () => _perform(TodoNotifications.openSystemSettings),
+                title: const Text('날짜 변경 시 바로 갱신'),
+                subtitle: const Text('알람 및 리마인더 권한을 허용하면 앱을 닫아도 자정에 목록을 갱신해요.'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: _saving
+                    ? null
+                    : () => _perform(TodoNotifications.openExactAlarmSettings),
               ),
-            ],
+            if (TodoNotifications.supported)
+              ListTile(
+                title: const Text('휴대폰 알림 설정'),
+                trailing: const Icon(Icons.open_in_new),
+                onTap: _saving
+                    ? null
+                    : () => _perform(TodoNotifications.openSystemSettings),
+              ),
           ],
         ),
       );
